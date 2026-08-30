@@ -81,7 +81,47 @@ Codex 开工前自动读取的"工作说明书"，可分层：
 - 桌面端靠 project / thread / worktree 隔离，多 agent 并行改同一仓库不冲突
 - 用 `/agent` 在 CLI 中切换、查看、喊停、关闭正在跑的 agent 线程
 
-## 6. 可延伸的调研方向
+## 6. 使用 Codex 的前置要求
+
+### 6.1 账号与订阅（硬性）
+
+| 项目 | 要求 |
+|---|---|
+| 账号 | ChatGPT 账号（Free / Go / Plus / Pro / Business / Edu / Enterprise 各档均含 Codex，额度不同）或 OpenAI Platform API Key |
+| 云端版 | **必须 ChatGPT 账号登录**，API Key 方式不支持/受限 |
+| GitHub | 使用云端任务需把 ChatGPT 与 GitHub 账号绑定 |
+| MFA | 官方要求 Codex 云端账号开启多因素认证 |
+| 企业 | 工作区成员与席位决定可用面；RBAC 控制功能权限；Enterprise 可签发 Codex access token 做非交互自动化；支持 workload identity federation |
+
+两种登录方式的取舍：
+
+- **ChatGPT 登录**：走订阅额度，能用云端 + 工作区集成，适合个人/团队日常
+- **API Key 登录**：按 token 计费（标准 API 价），只覆盖本地 CLI / 桌面 / IDE，云端和 ChatGPT 工作区功能受限或不可用，**适合 CI/CD 与程序化调用**
+
+命令参考：`codex login`（浏览器流）、`printenv OPENAI_API_KEY | codex login --with-api-key`、`codex login --device-auth`（无浏览器/远程机）、`codex login status` / `codex logout`。
+
+### 6.2 本地环境（CLI）
+
+| 依赖 | 最低 | 推荐 |
+|---|---|---|
+| 操作系统 | macOS 12+；Ubuntu 20.04+ / Debian 10+；Windows 11（原生 PowerShell 或 WSL2） | macOS 14+；Ubuntu 22.04+ |
+| Node.js | 16+（仅 npm 安装路径需要） | 22 LTS |
+| Git | 2.23+（可选，PR helper / worktree 需要） | 2.30+ |
+| 内存 | 4 GB | 8 GB+ |
+| 磁盘 | ~200 MB | 500 MB+ |
+
+- 用官方安装脚本 / Homebrew cask / 预编译二进制安装时**不需要 Node**（自带运行时）
+- 安装方式：`npm i -g @openai/codex`、`brew install --cask codex`、`curl -fsSL https://chatgpt.com/codex/install.sh | sh`、GitHub Releases 下载二进制
+- 禁止 `sudo npm install -g`，应修 npm 权限
+
+### 6.3 网络与沙箱（企业落地要评估）
+
+- 需能访问 OpenAI 服务；企业要评估代码出境、数据留存策略（ChatGPT 登录受工作区留存/驻留设置约束，API Key 受 API 组织设置约束）
+- macOS 12+ 用 Apple Seatbelt 包裹命令，默认**完全禁止出网**，仅 `$PWD`、`$TMPDIR`、`~/.codex` 等少数路径可写
+- **Linux 默认无沙箱**，官方建议用 Docker（`run_in_container.sh`）+ iptables 脚本，只放行 OpenAI API 出网
+- 审批模式三档：`suggest`（默认，写文件/执行命令都要问）、`auto-edit`（自动改文件，命令仍要问）、`full-auto`（自动执行，但断网 + 限制在当前目录）
+
+## 7. 可延伸的调研方向
 
 - Codex 桌面端 / ChatGPT 云端版与 CLI 的能力差异矩阵
 - 持久模式与"主动性"对产品设计的影响（主动型 agent 的权限/通知/成本设计）
