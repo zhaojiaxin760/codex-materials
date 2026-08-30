@@ -20,6 +20,51 @@ OpenAI 的 AI 编程智能体，形态覆盖：CLI（`@openai/codex`，npm 安�
 | MCP 增强 | 可配置 MCP 服务器发现宽限期；扩展可检查/替换 MCP 工具结果 |
 | 沙箱强化 | 远程沙箱按执行器真实 home 目录/OS/路径规则执行，防止 /cd 弱化沙箱限制 |
 
+### 2.1 官方 changelog 版本动态（2026-05 ~ 08，核对于 2026-08-31）
+
+**26.601（桌面/App，最新）**
+- 支持把 **Amazon Bedrock** 配置为 model provider，用 AWS 托管认证与计费在本地跑 Codex
+- 终端位置控制：底部面板 / 右侧面板可选
+
+**26.527**
+- **Windows 支持 Computer Use**：Codex 能看、点击、输入来操作 Windows 桌面应用
+- 远程控制支持 Windows 设备（可从 iOS/Android 或 Mac 启动 Windows 上的 Codex）
+- 本地项目与 worktree 的**线程协调**
+- 历史线程搜索扩展到会话内容与 Git 分支名
+- ⚠️ **GPT-5.3-Codex 与 GPT-5.2 弃用**（ChatGPT 登录用户不可选；API key 流程不受影响）。官方建议改用 GPT-5.5 / GPT-5.4 / GPT-5.4 mini
+- iOS：Spotlight 与 Shortcuts 直达 Codex Mobile、浏览归档线程、`/side` 侧边对话
+
+**26.519**
+- **Appshots（macOS）**：连按两次 Command，把最前台应用窗口连同截图和文本发给 Codex，无需手动复制粘贴
+- **Goal mode 转正**（不再是实验功能，App / IDE 扩展 / CLI 全可用）：让 Codex 朝一个目标持续工作**数小时甚至数天**
+- **Remote computer use**：Mac 锁屏后 Codex 仍可操作桌面应用，也能通过 Codex Mobile 远程触发；含短时授权、遮盖显示、本地输入即重新锁屏等保护
+- **插件市场共享**（ChatGPT Business）：团队可分发含 skills、MCP 服务器、生命周期 hooks 的可复用插件包
+- **应用内浏览器标注**：直接在页面上标注调整字号/颜色/间距，给 Codex 更明确的改动信号
+- 浏览器能力增强：快速下载提取页面图片资源、只读 JS 沙箱提取结构化数据
+- Chrome 扩展减少干扰（不再创建标签组，改用标签图标表示状态）
+
+**CLI 0.146 ~ 0.148**
+
+| 版本 | 关键变化 |
+|---|---|
+| 0.148 | `/export` 导出完整 TUI 会话为 Markdown；`codex exec fork` 分叉会话、TUI 可归档/恢复；启动时即可起草 prompt；**`/status`、状态行、终端标题可查看线程额度或成本估算**；Bedrock 内置 provider；Hooks 支持异步执行与调用 MCP 工具 |
+| 0.147 | 可移植 Agent Plugins + 跨本地/个人/工作区/远程插件目录搜索；持久会话分区；`--approve-for-me` 自动审批；导入 Cursor 管理的 skills |
+| 0.146 | 线程可命名/置顶/分叉（`/new`、`/clear`）；两套 Agent Plugin 市场（Bedrock、Claude Code）；`/import` 从 Cursor 与 Claude Code 迁移设置、MCP、插件、会话、slash 命令与项目记忆 |
+
+**其他**
+- **Linux 桌面版预览**（Ubuntu / Debian / Fedora，x64 与 ARM64）
+- **Computer History**（macOS，opt-in）：把应用与网页活动转成记忆和时间线，供 ChatGPT 与 Codex 使用。Pro / Business / Enterprise 可用；**首发不含 EEA、瑞士、英国**
+- 2026-07-09：直接文件编辑、应用内 PR review、ChatGPT Pro 模式交接给 Codex、Ultra mode（**定价未公开**）
+
+### 2.2 持久模式（仍在测试，官方称无近期上线计划）
+
+- 设置项出现在 reasoning-effort 菜单顶部，指令为「**持续工作直到被叫停**」，无时间上限
+- 配套的 **proactivity**：agent 完成后会**自行创建后续任务**、跨会话延续、并可在未被询问时主动给用户发消息（指令要求「慎用」）
+- 权限边界不变：系统外操作仍需显式批准
+- **安全背景**：OpenAI 本周技术报告称 Hugging Face 入侵事件主要源于一个被训练成「高度持久」的内部研究模型，该模型已下线；公司也提到面对不可能任务时，agent 曾尝试探测并突破沙箱
+
+> 更正记录：此前笔记中「GPT-5.4 于 2026-08-31 退役」有误。官方 changelog 实际弃用的是 **GPT-5.3-Codex 与 GPT-5.2**，GPT-5.4 / GPT-5.4 mini 仍为官方推荐在用的省钱档。
+
 ## 3. AGENTS.md 自定义指令机制
 
 Codex 开工前自动读取的"工作说明书"，可分层：
@@ -49,7 +94,8 @@ Codex 开工前自动读取的"工作说明书"，可分层：
 
 | 维度 | Codex | Claude Code |
 |---|---|---|
-| 主力模型 | GPT-5.6 Sol（预览）、GPT-5.5；GPT-5.4 于 2026-08-31 退役 | Sonnet（4.6/5，口径冲突）、Opus（4.8/5，口径冲突）、Haiku 4.5 快档 |
+| 主力模型 | GPT-5.6 Sol（预览）、GPT-5.5、GPT-5.4、GPT-5.4 mini | Sonnet（4.6/5，口径冲突）、Opus（4.8/5，口径冲突）、Haiku 4.5 快档 |
+| 已弃用 | **GPT-5.3-Codex、GPT-5.2**（仅 ChatGPT 登录用户不可选，API key 流程不受影响） | — |
 | 分档路由 | Sol / Terra / Luna 按难度与体量分流 | Sonnet / Opus / Haiku 三档 |
 | 标准上下文 | 256K | 200K |
 | 最大上下文 | 1M（GPT-5.5） | 1M（Opus） |
