@@ -42,7 +42,46 @@ Codex 开工前自动读取的"工作说明书"，可分层：
 
 选型经验：Codex 适合"明确任务交给它执行"，Claude Code 适合"模糊需求一起探索"；不少开发者两者并用（Codex 做快速原型和测试生成，Claude Code 做架构决策和复杂重构）。
 
-## 5. 可延伸的调研方向
+## 5. 多 Agent（Subagent）配置与并发上限
+
+### 5.1 关键配置参数（config.toml `[agents]` 段）
+
+| 参数 | 默认值 | 作用 | 调参建议 |
+|---|---|---|---|
+| `agents.max_threads` | **6** | 同时打开的 agent 线程上限（并行宽度） | 决定并行管道宽度；官方默认值即成本/性能折中 |
+| `agents.max_depth` | **1** | agent 嵌套深度（root=0） | 默认只允许直接子 agent；调大会引发层层 fan-out，token/延迟/本地资源失控，**官方明确建议保持默认** |
+| `agents.job_max_runtime_seconds` | 1800s（30 分钟） | `spawn_agents_on_csv` 每个 worker 的超时 | 批量任务按复杂度调 |
+
+### 5.2 并发数口径差异（需注意）
+
+| 口径 | 数值 | 来源 |
+|---|---|---|
+| 本地 subagent 线程上限（`max_threads`） | 默认 6 | OpenAI 官方文档 developers.openai.com/codex/subagents |
+| 「Subagents GA 支持并行 agent 数」 | 8 | 第三方对比站 morphllm（2026-07 更新） |
+| 云端/组织账户并发任务 | 默认 32，可扩展至 128 | 中文综述文章（**待官方核实**） |
+| 配额侧硬约束（ChatGPT Plus） | 每 5 小时窗口 5 个 cloud task、5 次 code review | OpenAI 定价页（第三方整理） |
+
+> 结论：**配置层面是 6，产品宣传/云侧是 8～32**，实际能跑多少取决于「本地配置 + 账户等级配额」两者取小。
+
+### 5.3 内置与自定义 agent
+
+- 内置三种：`default`（通用兜底）、`worker`（执行/修复）、`explorer`（只读代码库探索）
+- 自定义 agent：TOML 文件放 `~/.codex/agents/`（个人）或 `.codex/agents/`（项目级，可入版本库，团队共享）
+- 必填字段：`name` / `description` / `developer_instructions`
+- 可选字段：`model`、`model_reasoning_effort`、`sandbox_mode`、`mcp_servers`、`skills`、`nickname_candidates`
+- 未设置的字段从父会话继承；同名自定义 agent 覆盖内置 agent
+- **Codex 不会自动分身**：只有你明确说「派 N 个 agent / 这块并行处理」时才会 spawn。官方强调子 agent 各自跑模型、用工具，**比单 agent 更费 token**
+
+### 5.4 实践建议（社区共识）
+
+- 按「任务可拆的维度」定数量，而非一味堆并发：PR 评审常见 3～5 个（一个评审点一个 agent）；代码库探索 + 定位 + 修复常见 3 个（explorer / debugger / worker）
+- 模型分层省钱：探索类只读任务用轻量快模型（如 spark 档），真正改代码的 worker 用强模型
+- 批量同质任务走 `spawn_agents_on_csv`（一行一个 worker，结果汇总导出 CSV），比多轮对话扇出更可控
+- 几十上百个 agent 的场景，官方建议改用 **Workflow 脚本** 编排，不要把编排逻辑塞进对话
+- 桌面端靠 project / thread / worktree 隔离，多 agent 并行改同一仓库不冲突
+- 用 `/agent` 在 CLI 中切换、查看、喊停、关闭正在跑的 agent 线程
+
+## 6. 可延伸的调研方向
 
 - Codex 桌面端 / ChatGPT 云端版与 CLI 的能力差异矩阵
 - 持久模式与"主动性"对产品设计的影响（主动型 agent 的权限/通知/成本设计）
