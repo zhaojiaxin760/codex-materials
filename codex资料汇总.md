@@ -30,17 +30,79 @@ Codex 开工前自动读取的"工作说明书"，可分层：
 - **备用文件名**：`project_doc_fallback_filenames` 可兼容团队已有的 TEAM_GUIDE.md 等规范文件
 - 官方指南：https://developers.openai.com/codex/guides/agents-md
 
-## 4. Codex vs Claude Code（社区共识）
+## 4. Codex vs Claude Code 全面对比（2026-08 数据）
+
+> 数据核对时间 2026-08-18 ~ 08-23（Artificial Analysis、官方定价页、各对比站）。**模型代际更新极快，不同来源存在口径冲突（如 Claude 的 Opus 4.8 vs Opus 5），下表已标注。**
+
+### 4.1 定位与工作流
 
 | 维度 | Codex | Claude Code |
 |---|---|---|
-| 定位 | 并行、异步、委派式 | 交互式、单会话、可实时引导 |
-| 优势 | 多 agent 并行、token 效率高、沙箱安全、终端任务强（Terminal-Bench 82.7%）、速度快 | 代码质量高（盲评 67% 偏好）、架构推理、深度调试、大上下文（1M） |
-| 短板 | 过程偏黑盒、UI/设计实现弱、速度（单任务）较慢 | token 消耗高、配额紧、更贵 |
-| 价格 | ChatGPT 订阅（$20 Plus 起，Pro $100/$200） | Claude 订阅（$20 Pro 起，Max $100/$200） |
-| 典型比喻 | "靠谱的中级工程师：听话、快、少翻车" | "资深架构师：能讨论、更聪明、但更贵更慢" |
+| 核心模式 | 并行、异步、委派式：派任务 → 等 → 收 PR | 交互式单会话：实时引导、边看边改 |
+| 上下文架构 | 每个子任务独立上下文（父会话汇总） | **主上下文连续**，保留已查事实/否掉的假设/共享约束 |
+| 并行能力 | 子 agent 并行（配置上限 6，产品侧 8），worktree 隔离线程 | 子 agent + worktree + 实验性 Agent Teams + `/batch`（可拆 5~30 个 worktree） |
+| 触发方式 | **不会自动分身**，需你明确说「开 N 个 agent」 | 可自动编排子 agent |
+| 开源 | CLI 部分 Apache-2.0 开源（114,493 stars，2026-08-23） | 闭源（142,686 stars，2026-08-23） |
+| 生态规模 | OpenAI 称 2026-08-21 达 2,000 万活跃用户 | 覆盖面广：终端 / VS Code / JetBrains / 桌面 / Web / 移动端 / Slack |
 
-选型经验：Codex 适合"明确任务交给它执行"，Claude Code 适合"模糊需求一起探索"；不少开发者两者并用（Codex 做快速原型和测试生成，Claude Code 做架构决策和复杂重构）。
+### 4.2 模型与上下文
+
+| 维度 | Codex | Claude Code |
+|---|---|---|
+| 主力模型 | GPT-5.6 Sol（预览）、GPT-5.5；GPT-5.4 于 2026-08-31 退役 | Sonnet（4.6/5，口径冲突）、Opus（4.8/5，口径冲突）、Haiku 4.5 快档 |
+| 分档路由 | Sol / Terra / Luna 按难度与体量分流 | Sonnet / Opus / Haiku 三档 |
+| 标准上下文 | 256K | 200K |
+| 最大上下文 | 1M（GPT-5.5） | 1M（Opus） |
+| 单次输出上限 | 64K | 128K |
+| 配置文件 | `AGENTS.md`（**厂商中立标准**，其他 agent 也支持） | `CLAUDE.md` |
+
+### 4.3 公开基准（Artificial Analysis，2026-08）
+
+| 指标 | Claude Code + Opus 5 (xhigh) | Codex + GPT-5.6 Sol (max) |
+|---|---|---|
+| Coding Agent Index | 67 | 67（**打平**） |
+| DeepSWE | 60% | **69%** |
+| Terminal-Bench v2 | 85% | **88%** |
+| SWE-Atlas-QnA | **55%** | 43% |
+| 单任务耗时 | 23.6 min | **10.2 min** |
+| 单任务 token | 21.8M | **13.2M** |
+| 单任务成本 | $8.23 | **$7.08** |
+
+另一组口径（morphllm，2026-07）：SWE-bench Pro Claude 69.2% vs Codex 58.6%；SWE-bench Verified 88.6% vs 88.7%；Terminal-Bench 2.0 69.4% vs 82.7%。
+
+> 结论：**综合评分打平，Codex 在执行效率（时间/token/成本）上明显领先，Claude Code 在探索型/问答型任务上更强。**
+
+### 4.4 价格与配额
+
+| 档位 | Codex（ChatGPT 方案） | Claude Code（Claude 方案） |
+|---|---|---|
+| 免费 | $0，基础额度 | $0，收紧的限额 |
+| 入门 | Go $8 / Plus $20 | Pro $20（年付 $17） |
+| 中档 | Pro 5x $100 | Max 5x $100 |
+| 顶配 | Pro 20x $200 | Max 20x $200 |
+| 团队 | Business ~$20/人（年付）~$25（月付） | Team Standard $25（**不含 Claude Code**）/ Premium $125 |
+| 企业 | 定制 | $20/席位自助 + API 用量，或定制 |
+| API 价（输入/输出，每百万 token） | GPT-5.5：$5 / $30 | Opus 4.8：$5 / $25 |
+| 缓存 | 自动 90% | 90% |
+
+计费与限额机制：
+
+- **Codex**：2026-04-02 起改为 **token 额度制**，滚动 5 小时窗口。Plus 每窗口约 10~100 条 Sol 消息 / 25~200 条 Terra / 250~2000 条 Luna；Pro 为 5x、20x。轻度会话约消耗 $0.50~$2.00 额度
+- **Claude Code**：滚动 5 小时窗口 + **周上限**，按模型小时计。Pro 约 40~80 Sonnet 小时/周，Max 5x 约 140~280，Max 20x 约 240~480。2026-05-06 把 5 小时上限翻倍；所有付费档周限额 +50% 的活动至 2026-08-31
+- 两者本地与云端共用同一额度池（Codex）；Plus 与 Pro 共用一个 5 小时窗口
+
+### 4.5 选型决策规则
+
+| 场景 | 首选 | 原因 |
+|---|---|---|
+| 根因分析、架构改动、跨组件修改 | **Claude Code** | 探索过程中任务列表会变，需要主上下文保留判断链 |
+| 有明确验收标准和测试的可拆解批量任务 | **Codex** | 独立 worktree 线程 + 按难度路由模型，吞吐高 |
+| 高频日常实现 | **Codex** | 单任务 10.2 min vs 23.6 min，token 少 40% |
+| 大重构、深度调试 | **Claude Code** | 盲评中代码质量更受偏好（2026 调查约 67%） |
+| 成本敏感 / 已在 ChatGPT 生态 | **Codex** | Go $8 起，捆绑现有订阅 |
+| 企业合规与管控 | 视生态而定 | Codex 走 ChatGPT 工作区 RBAC/留存策略；Claude 走 Anthropic 侧 |
+
+常见做法：**两者并用**——Codex 跑批量实现与测试生成，Claude Code 做架构决策与复杂重构。
 
 ## 5. 多 Agent（Subagent）配置与并发上限
 
