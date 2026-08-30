@@ -1,0 +1,42 @@
+topic: Codex 工作流落地手册
+created: 2026-08-31
+note: detail_level 分三档——极简（一两句话）/ 简要（要点式）/ 详细（含具体步骤与代码块）
+
+fields:
+  - name: 核心做法
+    description: 这个环节具体怎么做，讲清楚原理与操作步骤
+    detail_level: 详细
+  - name: 可直接复制的模板命令配置
+    description: 能直接粘贴使用的代码块、命令、配置文件片段，这是手册的核心价值
+    detail_level: 详细
+  - name: 关键参数
+    description: 相关参数，必须同时给出「官方默认值」与「一人公司推荐值」，并说明哪些必须改
+    detail_level: 简要
+  - name: 常见坑
+    description: 容易踩的坑、失效场景、版本差异导致的陷阱
+    detail_level: 详细
+  - name: 降级与回退路径
+    description: 出问题时怎么退——模型弃用后换什么、额度耗尽后怎么办、协议不匹配怎么加网关
+    detail_level: 简要
+  - name: 版本与生效时间
+    description: 该能力在哪个 CLI 版本或 changelog 日期引入或变更，Codex 以周为单位迭代，两周前的建议可能已失效
+    detail_level: 极简
+  - name: 可自动化程度
+    description: 能否用 codex exec --json 在无人值守的 CI 或定时任务中跑，决定它对一人公司是产能还是玩具
+    detail_level: 简要
+  - name: 优先级
+    description: P0/P1/P2。一人公司无团队分摊精力，必须先做高杠杆项
+    detail_level: 极简
+  - name: 对一人公司的适用性
+    description: 结合「无同事 review、成本敏感、需要异步杠杆」这三个前提给出判断
+    detail_level: 简要
+  - name: 信息来源
+    description: 官方文档 URL 或可信来源，便于后续核对
+    detail_level: 极简
+
+uncertain:
+  - Hooks 的 exit 2 阻断机制在各 CLI 版本的行为一致性
+  - permissions 域白名单与旧 sandbox/approval 二维模型的兼容关系
+  - auto_compact 的默认阈值与可调范围
+  - Goal Mode 的 budget_limit 是否支持硬性封顶
+  - Appshots 与锁定态计算机使用的具体权限要求

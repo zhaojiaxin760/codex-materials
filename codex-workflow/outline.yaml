@@ -1,0 +1,58 @@
+topic: Codex 工作流落地手册
+topic_slug: codex-workflow
+created: 2026-08-31
+scope: 面向一人公司的可操作手册——契约式派单、AGENTS.md 写法、验证循环、省钱配置
+time_range: 2026-03 至今（近 6 个月）
+
+items:
+  - id: 1
+    name: 契约式派单模板
+    desc: 任务怎么写才能一次做对。四要素（子系统 / 期望行为 / 验证命令 / 收尾动作）的标准模板与反例
+  - id: 2
+    name: 派单验收门禁
+    desc: 收尾动作独立成章——可 replay 的 transcript 片段、PR 范围回执、失败时的报告格式
+  - id: 3
+    name: AGENTS.md 写法与长度控制
+    desc: 结构、推荐长度、必写项与禁忌、分层与 override 机制、为什么啰嗦会烧钱
+  - id: 4
+    name: Goal Mode 长任务自治
+    desc: 2026-05-21 转正。/goal 与 /side、budget_limit 预算封顶、paused/achieved 状态机、成功条件怎么写
+  - id: 5
+    name: config.toml 核心配置
+    desc: 模型路由、推理强度、审批模式、沙箱模式、agents 并发参数，逐项给默认值与一人公司推荐值
+  - id: 6
+    name: 权限新体系
+    desc: '[permissions.*] 域白名单、profiles、.rules、execpolicy——比 sandbox/approval 更细的管控面'
+  - id: 7
+    name: Hooks 强制验证
+    desc: 'SessionStart / PreToolUse / PostToolUse / Stop 四类钩子，exit 2 阻断机制，把"跑测试再交回"从软约定变硬执行'
+  - id: 8
+    name: 验证循环设计
+    desc: 测试命令怎么写、自验证迭代、失败处理策略、回归防护、无测试项目的替代方案
+  - id: 9
+    name: 上下文与会话治理
+    desc: auto_compact 阈值、/new <name> 命名线程、side conversation、/export、长任务的失忆与隐性成本
+  - id: 10
+    name: 成本与额度可视化
+    desc: credit 机制、/status 与 /usage、statusline、codex exec --json 的 token_count 事件做 CI 计量、Plus 5 小时窗口回归的影响
+  - id: 11
+    name: 并行与自定义 agent 分档
+    desc: 何时该拆、怎么拆、.codex/agents/*.toml 自定义 agent、explorer 用便宜模型 worker 用贵模型的省钱开关
+  - id: 12
+    name: 模型弃用与迁移时点
+    desc: 2026-07-23 与 2026-08-31 两波下线清单、ChatGPT 登录态 vs API key 的差异、配置里的 model id 排查清单
+  - id: 13
+    name: 国内环境适配
+    desc: 接 DeepSeek / Kimi / GLM / Qwen 的 provider 配置、Responses API 协议要求、只支持 Chat Completions 时的转换网关
+  - id: 14
+    name: 任务模板库与 Skills 打包
+    desc: 补测试 / 重构 / 迁移 / PR review / 批量修 bug 的可复用模板；SKILL.md 与 Agent Plugins 打包分发
+  - id: 15
+    name: 故障排查
+    desc: 连接失败、wire_api 协议不匹配（404 或空流）、额度耗尽、tool calling 不支持、Appshots 与锁定态计算机使用
+
+execution:
+  batch_size: 5
+  items_per_agent: 3
+  output_dir: ./results
+  agent_type: general-purpose

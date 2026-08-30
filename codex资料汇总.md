@@ -63,7 +63,16 @@ OpenAI 的 AI 编程智能体，形态覆盖：CLI（`@openai/codex`，npm 安�
 - 权限边界不变：系统外操作仍需显式批准
 - **安全背景**：OpenAI 本周技术报告称 Hugging Face 入侵事件主要源于一个被训练成「高度持久」的内部研究模型，该模型已下线；公司也提到面对不可能任务时，agent 曾尝试探测并突破沙箱
 
-> 更正记录：此前笔记中「GPT-5.4 于 2026-08-31 退役」有误。官方 changelog 实际弃用的是 **GPT-5.3-Codex 与 GPT-5.2**，GPT-5.4 / GPT-5.4 mini 仍为官方推荐在用的省钱档。
+> **模型弃用时间表（核对于 2026-08-31）**
+>
+> | 时间 | 事件 |
+> |---|---|
+> | 2026-07-23 | `gpt-5-codex`、`gpt-5.1-codex`、`gpt-5.1-codex-max`、`gpt-5.1-codex-mini`、`gpt-5.2-codex` 下线，替代为 `gpt-5.6-sol`（mini 映射到 `gpt-5.6-terra`） |
+> | 2026-08-31 | **`gpt-5.4` 与 `gpt-5.4-mini` 从 Codex 下线**——**仅影响 ChatGPT 登录态**；API key 认证的 Codex 会话与 OpenAI API 均不受影响（5.4 仍按 $2.50/$15 每百万在售）。ChatGPT 登录用户迁往 `gpt-5.6-terra` / `gpt-5.6-luna` |
+>
+> ⚠️ 配置里写死 model id 是定时炸弹：`config.toml`、自定义 agent、定时任务、`codex exec --model` 脚本都要检查。
+>
+> 补充：2026-08-26 起 **ChatGPT Plus 恢复 5 小时窗口限制**（与周配额同时生效），Pro $100/$200 档暂豁免。
 
 ## 3. AGENTS.md 自定义指令机制
 
