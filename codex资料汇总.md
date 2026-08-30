@@ -264,7 +264,71 @@ OpenAI 官方口径：把 Codex 当主力工程工具的重度用户约 **$100~2
 
 **一人公司推荐路径**：Plus $20 起步 → 默认模型压到 mini/Terra → 一个月后看用量面板决定是否升 Pro 5x。批量/CI 类任务单独走 API key 并设预算上限，避免和日常额度互相挤占。
 
-## 8. 可延伸的调研方向
+## 8. 能否接入国内模型
+
+**结论：CLI + API Key 路线可以；ChatGPT 订阅路线不行；云端任务不行。**
+
+### 8.1 三条路线的可行性
+
+| 路线 | 能否换国内模型 | 说明 |
+|---|---|---|
+| CLI + API Key（`model_providers`） | ✅ 可以 | 唯一能接第三方模型的路径 |
+| CLI + ChatGPT 订阅登录 | ❌ 不行 | 仍直连 OpenAI 服务器，只能用 OpenAI 模型 |
+| Codex 云端 / 云沙箱任务 | ❌ 不行 | 云端强制 ChatGPT 登录 |
+
+### 8.2 配置方式（`~/.codex/config.toml`）
+
+```toml
+model = "deepseek-chat"
+model_provider = "deepseek"
+
+[model_providers.deepseek]
+name = "DeepSeek"
+base_url = "https://api.deepseek.com/v1"
+env_key = "DEEPSEEK_API_KEY"
+
+[model_providers.kimi]
+name = "Moonshot Kimi"
+base_url = "https://api.moonshot.cn/v1"
+env_key = "MOONSHOT_API_KEY"
+
+[model_providers.glm]
+name = "Zhipu GLM"
+base_url = "https://open.bigmodel.cn/api/paas/v4"
+env_key = "ZHIPU_API_KEY"
+```
+
+可接入的国内模型源：DeepSeek 官方、月之暗面 Kimi、智谱 GLM、阿里百炼 / 硅基流动 / 火山方舟（Qwen 等）、Ollama 本地模型（如 qwen3.5-coder）。
+
+命令行临时切换（不改动配置文件）：`codex --model deepseek-chat`、`codex -c model_provider='"deepseek"'`。
+
+### 8.3 最大的坑：协议要求
+
+> **2026-02 起 Codex 移除了 Chat Completions 支持，`wire_api` 只支持 `"responses"`。**
+
+- 端点必须兼容 **OpenAI Responses API**，仅支持 Chat Completions 的会直接 404 或空流（哪怕 curl `/v1/chat/completions` 是通的）
+- 只提供 Chat Completions 的厂商，需要在中间加转换网关（LiteLLM、OneAPI、OpenRouter 等）
+- 模型还必须具备 **tool calling** 能力，否则连不上
+
+### 8.4 安全边界（重要）
+
+**项目级 `.codex/config.toml` 不能覆盖 provider / auth / 通知 / 遥测 / profile 选择**。这是防「clone 一个仓库就把你的 prompt 和 API key 劫持到别人端点」的安全设计。provider 定义必须写在用户级 `~/.codex/config.toml`。
+
+### 8.5 成本与代价
+
+- 成本：国产模型普遍比 GPT-5.5 便宜一个数量级（参考价：DeepSeek V4 Flash 输出约 $0.28/M，GPT-5.5 输出 $30/M）
+- 代价：
+  - 失去**云端并行任务、GitHub PR 自动 review、Slack 集成**
+  - Codex 的提示词、沙箱与工具链是按 GPT-5.x 调优的，国产模型在长任务、并行子 agent 上的实际表现**需要自己实测**
+  - 新模型上线时间、函数调用稳定性要自行验证
+
+### 8.6 一人公司的推荐组合
+
+- **保留 ChatGPT Plus $20**：用于云端并行派单、PR 自动 review（这是 Codex 的核心杠杆，国产模型给不了）
+- **本地 CLI 的高频批量活接 DeepSeek / Qwen**：降本，且本地执行不受云端额度挤占
+- 用 `--model` 或 profile 按任务切换，不要全局一刀切
+
+## 9. 可延伸的调研方向
 
 - Codex 桌面端 / ChatGPT 云端版与 CLI 的能力差异矩阵
 - 持久模式与"主动性"对产品设计的影响（主动型 agent 的权限/通知/成本设计）
