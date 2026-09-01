@@ -271,7 +271,9 @@ Codex 开工前自动读取的"工作说明书"，可分层：
 - 需能访问 OpenAI 服务；企业要评估代码出境、数据留存策略（ChatGPT 登录受工作区留存/驻留设置约束，API Key 受 API 组织设置约束）
 - macOS 12+ 用 Apple Seatbelt 包裹命令，默认**完全禁止出网**，仅 `$PWD`、`$TMPDIR`、`~/.codex` 等少数路径可写
 - **Linux 默认无沙箱**，官方建议用 Docker（`run_in_container.sh`）+ iptables 脚本，只放行 OpenAI API 出网
-- 审批模式三档：`suggest`（默认，写文件/执行命令都要问）、`auto-edit`（自动改文件，命令仍要问）、`full-auto`（自动执行，但断网 + 限制在当前目录）
+- 审批与沙箱：`suggest`（默认，写文件/执行命令都要问）、`auto-edit`（自动改文件，命令仍要问）
+- ⚠️ **`--full-auto` 已在 v0.147.0（2026-08-07）移除**，正确写法是 `--sandbox workspace-write`（即在 workspace-write 沙箱下配合审批策略）；`codex exec` 上仍可能看到 deprecation warning
+- 新权限体系（更细）：`[permissions.*]` 域白名单 + profile + `.rules` + `execpolicy`，可精确到「允许哪些命令前缀」
 
 ## 7. 成本模型与 token 控制（一人公司视角）
 
