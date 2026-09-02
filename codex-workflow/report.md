@@ -32,17 +32,18 @@
 
 四要素的本质是：把「是否做完」的判定权从模型的自觉，移交给一条可执行的命令。
 
-【官方口径与本手册四要素的映射】
+【官方口径与本手册四要素的映射】  
 OpenAI 官方 Best practices 推荐每条 prompt 含四件事：Goal（要改什么）/ Context（哪些文件相关）/ Constraints（遵守什么约定）/ Done when（什么条件算完）。本手册的四要素是它在「无人值守、次日验收」场景下的落地映射：
 
-| 四要素 | 官方对应 | 回答的问题 | 缺失后的后果 |
-|---|---|---|---|
-| ① 子系统 | Context + Constraints | 我能碰哪些文件，绝对不能碰哪些 | 过度重构、误改迁移文件 / 公开 API / 依赖版本 |
-| ② 期望行为 | Goal | 改完之后「可观测的事实」是什么 | 模型自由发挥，交付物与你的预期不是一回事 |
-| ③ 验证命令 | Done when | 谁说了算（命令，不是模型的自述） | 模型自称完成，早上起来发现是假的 |
-| ④ 收尾动作 | Done when + Report | 交回时必带哪几样证据 | 无法 review，只能自己全盘重跑，异步杠杆归零 |
+| 四要素    | 官方对应                  | 回答的问题            | 缺失后的后果                      |
+| ------ | --------------------- | ---------------- | --------------------------- |
+| ① 子系统  | Context + Constraints | 我能碰哪些文件，绝对不能碰哪些  | 过度重构、误改迁移文件 / 公开 API / 依赖版本 |
+| ② 期望行为 | Goal                  | 改完之后「可观测的事实」是什么  | 模型自由发挥，交付物与你的预期不是一回事        |
+| ③ 验证命令 | Done when             | 谁说了算（命令，不是模型的自述） | 模型自称完成，早上起来发现是假的            |
+| ④ 收尾动作 | Done when + Report    | 交回时必带哪几样证据       | 无法 review，只能自己全盘重跑，异步杠杆归零   |
 
 【操作步骤】
+
 1. 先只读探查，再写契约。陌生模块先发一条只读单（`--sandbox read-only`），拿到文件清单与调用链后，再写真正的实现单。
 2. 划子系统：写死「可编辑」白名单 + 「禁止改」黑名单两行。绝不能写「相关文件酌情修改」。
 3. 写期望行为：用「输入 X → 得到 Y」或「之前 / 之后」的可观测句式。禁止使用「优化」「改进」「完善」「提升性能」这类没有判定标准的词。
@@ -53,36 +54,41 @@ OpenAI 官方 Best practices 推荐每条 prompt 含四件事：Goal（要改什
 8. 加反作弊条款：明确「不允许修改现有测试来使其通过」——否则模型会改测试而不是改代码。
 9. 事后沉淀：同一个坑踩第二次，就把规则写进 AGENTS.md，而不是每次在 prompt 里重述。
 
-【为什么四要素能一次做对】
+【为什么四要素能一次做对】  
 模型出错的三种来源分别是「猜边界」「猜目标」「猜验收」。子系统消灭第一种，期望行为消灭第二种，验证命令消灭第三种，收尾动作则让你在无人值守时依然能判定成败。四要素齐全的单，第一次命中率显著高于靠追问补救。
 
 ### 可直接复制的模板命令配置
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【模板 1｜主契约模板（中文，可直接复制填写）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【模板 1｜主契约模板（中文，可直接复制填写）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## 子系统
+
 - 可编辑：<精确到文件的白名单，例如 src/auth/login.ts, tests/auth/login.test.ts>
 - 禁止改：<迁移文件 / 公开 API 响应格式 / 依赖版本 / 其他模块>
 - 参考实现：<照抄哪个文件的模式，例如 src/validators/order.ts>
 
 ## 期望行为
+
 - 现状：<当前可观测的行为，最好贴一段原始报错或输出>
 - 目标：<改完之后可观测的行为，用「输入 X → 得到 Y」句式>
 - 不要求：<明确不属于本次目标的事>
 
 ## 验证命令（唯一权威，命令说了算）
+
 <可直接粘贴执行的完整命令，含参数，例如 pnpm vitest run tests/auth/login.test.ts -t 'plus'>
 
 ## 收尾动作（交回时必带，缺一不可）
+
 1. 贴出验证命令的原始输出（不要总结，要原文，含 exit code）
-2. 贴出 PR 范围回执：
-   git status --short
+2. 贴出 PR 范围回执：  
+   git status --short  
    git diff --stat
 3. 按下面格式写结论块：
 
 ### 结论
+
 - 结果：通过 / 失败 / 阻塞
 - 改动文件：<逐行列出>
 - 验证：<命令> → exit <码>
@@ -90,182 +96,200 @@ OpenAI 官方 Best practices 推荐每条 prompt 含四件事：Goal（要改什
 - 我未做的事：<一句话>
 
 ## 熔断
+
 同一条验证命令连续失败 3 次后停止，按上面「结论」格式报告，不要再继续改。
 
 ## 禁止
+
 - 不要重构无关代码
 - 不要升级依赖
 - 不要动数据库迁移与公开响应格式
 - 不要 git commit / git push
 - 不要修改现有测试来使其通过
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【模板 2｜三个高频场景的填好版】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【模板 2｜三个高频场景的填好版】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ▸ 场景 A：修 bug
 
 ## 子系统
+
 - 可编辑：src/auth/login.ts, tests/auth/login.test.ts
 - 禁止改：prisma/migrations/**, src/api/responses/**, package.json
 - 参考实现：src/validators/order.ts
 
 ## 期望行为
-- 现状：email 含加号（a+b@x.com）时 POST /api/login 返回 500，日志报 URIError
-- 目标：a+b@x.com 登录成功返回 200，且响应体结构与不含加号的 email 完全一致
+
+- 现状：email 含加号（<a+b@x.com>）时 POST /api/login 返回 500，日志报 URIError
+- 目标：<a+b@x.com> 登录成功返回 200，且响应体结构与不含加号的 email 完全一致
 - 不要求：不做 email 规范化、不改数据库字段
 
 ## 验证命令
+
 pnpm vitest run tests/auth/login.test.ts -t 'plus sign'
 
 ## 收尾动作
+
 （同主模板，照抄）
 
 ## 熔断 / 禁止
+
 （同主模板，照抄）
 
 ▸ 场景 B：重构（行为不变）
 
 ## 子系统
-- 可编辑：src/billing/**
-- 禁止改：public API 签名、prisma/migrations/**、其他模块
+
+- 可编辑：src/billing/\*\*
+- 禁止改：public API 签名、prisma/migrations/\*\*、其他模块
 
 ## 期望行为
+
 - 现状与目标：对外行为完全不变；src/billing 内部从 callback 改为 async/await
 - 不要求：不做性能优化、不调整目录结构
 
 ## 验证命令
+
 pnpm vitest run src/billing && pnpm tsc --noEmit && pnpm lint
 
 ## 收尾动作 / 熔断 / 禁止
+
 （同主模板；「禁止」再加一条：不要借机清理无关代码）
 
 ▸ 场景 C：补测试
 
 ## 子系统
-- 可编辑：tests/payments/**（只新增，不改现有测试文件）
-- 禁止改：src/**（发现 bug 就报告，不要自己改实现）
+
+- 可编辑：tests/payments/\*\*（只新增，不改现有测试文件）
+- 禁止改：src/\*\*（发现 bug 就报告，不要自己改实现）
 
 ## 期望行为
+
 - 现状：src/payments/refund.ts 无任何测试
 - 目标：覆盖 正常退款 / 超额退款 / 重复退款 三条路径，全部通过
 
 ## 验证命令
+
 pnpm vitest run tests/payments/refund.test.ts --coverage
 
 ## 收尾动作
+
 （同主模板；结论块再加一项：覆盖率 <数字>%）
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【模板 3｜反例对照（这几条踩中必返工）】
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【模板 3｜反例对照（这几条踩中必返工）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-❌ 反例 1｜没有子系统
-「修一下登录的 bug。」
+❌ 反例 1｜没有子系统  
+「修一下登录的 bug。」  
 问题：没说哪个文件、没说现象、没说怎么验证、没说交回什么。Codex 只能全仓搜索加猜测。
 
-❌ 反例 2｜验证命令是描述而不是命令
-「改完后跑一下相关测试确认没问题。」
-问题：「相关」由模型定义，「没问题」由模型判定，等于没有门禁。
+❌ 反例 2｜验证命令是描述而不是命令  
+「改完后跑一下相关测试确认没问题。」  
+问题：「相关」由模型定义，「没问题」由模型判定，等于没有门禁。  
 ✅ 改成：pnpm vitest run tests/auth/login.test.ts -t 'plus sign'
 
-❌ 反例 3｜期望行为写成了实现方案
-「把 src/auth/login.ts 里的 email 解析改成用 zod 校验。」
-问题：这是 How 不是 What。模型会照做，但可能根本不解决你的问题。
+❌ 反例 3｜期望行为写成了实现方案  
+「把 src/auth/login.ts 里的 email 解析改成用 zod 校验。」  
+问题：这是 How 不是 What。模型会照做，但可能根本不解决你的问题。  
 ✅ 改成：「email 含加号时返回 200 而不是 500。（实现方案由你决定，我只验收行为。）」
 
-❌ 反例 4｜一单多目标（Kitchen Sink）
-「重构整个 auth 模块，顺便补测试、更新文档、修掉所有 lint。」
-问题：五个目标，五个都做不好，且 diff 大到无法 review。
+❌ 反例 4｜一单多目标（Kitchen Sink）  
+「重构整个 auth 模块，顺便补测试、更新文档、修掉所有 lint。」  
+问题：五个目标，五个都做不好，且 diff 大到无法 review。  
 ✅ 改成：拆成 5 条独立的单，每个线程一条。
 
-❌ 反例 5｜占位符过载
-「给 [ENDPOINT] 加 [TYPE] 校验，用 [LIBRARY]，照 [PATTERN] 写。」
+❌ 反例 5｜占位符过载  
+「给 [ENDPOINT] 加 [TYPE] 校验，用 [LIBRARY]，照 [PATTERN] 写。」  
 ✅ 改成：把占位符全部替换成真实路径与技术名。
 
-❌ 反例 6｜没有收尾动作
-「……改完告诉我。」
+❌ 反例 6｜没有收尾动作  
+「……改完告诉我。」  
 问题：早上醒来只看到「已完成」三个字，无法判断真假，只能自己重跑——异步杠杆归零。
 
-❌ 反例 7｜隐性期望
-「Fix the bug.」
+❌ 反例 7｜隐性期望  
+「Fix the bug.」  
 ✅ 改成：写清现象、定位、复现步骤与回归测试要求。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【模板 4｜机器契约：--output-schema（让回执可被脚本解析）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【模板 4｜机器契约：--output-schema（让回执可被脚本解析）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 保存为 ~/.codex/schemas/handoff.json：
 
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["result", "changed_files", "verify", "residual_risk", "not_done"],
-  "properties": {
-    "result": { "enum": ["pass", "fail", "blocked"] },
-    "changed_files": { "type": "array", "items": { "type": "string" } },
-    "verify": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["command", "exit_code", "output_tail"],
-      "properties": {
-        "command": { "type": "string" },
-        "exit_code": { "type": "integer" },
-        "output_tail": { "type": "string" }
-      }
-    },
-    "residual_risk": { "type": "string" },
-    "not_done": { "type": "string" }
-  }
+{  
+"$schema": "<https://json-schema.org/draft/2020-12/schema>",  
+"type": "object",  
+"additionalProperties": false,  
+"required": ["result", "changed_files", "verify", "residual_risk", "not_done"],  
+"properties": {  
+"result": { "enum": ["pass", "fail", "blocked"] },  
+"changed_files": { "type": "array", "items": { "type": "string" } },  
+"verify": {  
+"type": "object",  
+"additionalProperties": false,  
+"required": ["command", "exit_code", "output_tail"],  
+"properties": {  
+"command": { "type": "string" },  
+"exit_code": { "type": "integer" },  
+"output_tail": { "type": "string" }  
+}  
+},  
+"residual_risk": { "type": "string" },  
+"not_done": { "type": "string" }  
+}  
 }
 
 注意：OpenAI Structured Outputs 强制要求每个 object 都写 "additionalProperties": false，缺了会报错。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【模板 5｜睡前下单脚本（cron / launchd / 手动都能跑）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【模板 5｜睡前下单脚本（cron / launchd / 手动都能跑）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 #!/usr/bin/env bash
+
 # ~/bin/codex-order —— 睡前下单，早上收回执
+
 # 用法：codex-order ./tasks/fix-login-plus.md ~/repos/myapp
-set -uo pipefail
+
+set -uo pipefail  
 TASK_FILE="$1"
 REPO="${2:-$PWD}"
-STAMP="$(date +%Y%m%d-%H%M%S)"
-OUT_DIR="$HOME/codex-orders/$STAMP"
+STAMP="$(date +%Y%m%d-%H%M%S)"  
+OUT_DIR="$HOME/codex-orders/$STAMP"  
 mkdir -p "$OUT_DIR"
 
 cd "$REPO" || exit 1
 
-codex exec \
-  --cd "$REPO" \
-  --sandbox workspace-write \
-  --ask-for-approval never \
-  --json \
-  --output-schema "$HOME/.codex/schemas/handoff.json" \
-  -o "$OUT_DIR/handoff.json" \
+codex exec   
+--cd "$REPO" \   --sandbox workspace-write \   --ask-for-approval never \   --json \   --output-schema "$HOME/.codex/schemas/handoff.json"   
+-o "$OUT_DIR/handoff.json" \
   "$(cat "$TASK_FILE")" \
-  2> "$OUT_DIR/stderr.log" \
-  | tee "$OUT_DIR/events.jsonl" \
-  | jq -r --unbuffered 'select(.type=="item.completed" and .item.type=="command_execution") | "\(.item.status)\t\(.item.exit_code)\t\(.item.command)"'
+  2> "$OUT_DIR/stderr.log"   
+| tee "$OUT_DIR/events.jsonl"   
+| jq -r --unbuffered 'select(.type=="item.completed" and .item.type=="command_execution") | "(.item.status)\t(.item.exit_code)\t(.item.command)"'
 
 # 早上第一件事：看回执
+
 echo "===== 回执 $STAMP ====="
-if [ -s "$OUT_DIR/handoff.json" ]; then
-  jq . "$OUT_DIR/handoff.json"
+if [ -s "$OUT_DIR/handoff.json" ]; then  
+jq . "$OUT_DIR/handoff.json"
 else
-  echo "[!] 无结构化回执，请检查 $OUT_DIR/events.jsonl 与 stderr.log"
-  jq -r 'select(.type=="turn.failed" or .type=="error") | tojson' "$OUT_DIR/events.jsonl"
+  echo "[!] 无结构化回执，请检查 $OUT_DIR/events.jsonl 与 stderr.log"  
+jq -r 'select(.type=="turn.failed" or .type=="error") | tojson' "$OUT_DIR/events.jsonl"
 fi
 echo "===== 实际改动 ====="
-git -C "$REPO" status --short
+git -C "$REPO" status --short  
 git -C "$REPO" diff --stat
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【模板 6｜把契约写进 AGENTS.md，一劳永逸】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【模板 6｜把契约写进 AGENTS.md，一劳永逸】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## 派单契约（每次任务默认遵守）
+
 - 任何任务开始前，先复述：可编辑范围、禁止改动范围、验证命令、收尾动作四项；缺少任一项先问，不要开工。
 - 验证命令必须原样执行并贴出原始输出与 exit code，不允许用「应该没问题」代替。
 - 同一条命令连续失败 3 次后停下并报告，不要继续尝试。
@@ -277,19 +301,19 @@ git -C "$REPO" diff --stat
 
 官方默认值 → 一人公司推荐值（★=必须改）
 
-| 参数 | 官方默认 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| sandbox_mode | read-only | workspace-write ★ | 默认只读根本写不了文件，派单必须显式放开 |
-| approval_policy | on-request（另有资料称 untrusted，二者口径不一） | 睡前无人值守单：never ★；日常交互：on-request | 非 TTY 下不设 never 会挂死等确认 |
-| model_reasoning_effort | medium | 睡前长单 high；机械单（重命名 / 补测试）low | 按任务难度配，不要一律拉满 |
-| --output-schema 的 additionalProperties | 无（需自己写） | 每个 object 都写 false ★ | OpenAI Structured Outputs 的硬性要求 |
-| hooks timeout | 600 秒 | 30–120 秒 | 默认太长，失败单会空转 |
-| project_doc_max_bytes | 32768（32 KiB） | 保持 32768 | 别调大，先拆文件（见 AGENTS.md 条目） |
-| 熔断轮次 | 无内置参数 | 在 prompt 里写「连续 3 次」★ | Codex 没有 max_iterations，只能靠提示词 |
-| web_search | cached | 涉及外部文档时改 live | 平时保持 cached 省钱 |
-| -o / --output-last-message | 无 | 必配，落盘回执 | 否则只能从 JSONL 里掏 |
-| sandbox_workspace_write.network_access | false | 保持 false，需要装依赖时临时 -c 打开 | 验证命令依赖网络时会莫名失败 |
-| CODEX_API_KEY | 无 | CI / cron 场景必配 | 避免 runner 读 ~/.codex/auth.json |
+| 参数                                     | 官方默认                               | 一人公司推荐值                         | 说明                              |
+| -------------------------------------- | ---------------------------------- | ------------------------------- | ------------------------------- |
+| sandbox_mode                           | read-only                          | workspace-write ★               | 默认只读根本写不了文件，派单必须显式放开            |
+| approval_policy                        | on-request（另有资料称 untrusted，二者口径不一） | 睡前无人值守单：never ★；日常交互：on-request | 非 TTY 下不设 never 会挂死等确认          |
+| model_reasoning_effort                 | medium                             | 睡前长单 high；机械单（重命名 / 补测试）low     | 按任务难度配，不要一律拉满                   |
+| --output-schema 的 additionalProperties | 无（需自己写）                            | 每个 object 都写 false ★            | OpenAI Structured Outputs 的硬性要求 |
+| hooks timeout                          | 600 秒                              | 30–120 秒                        | 默认太长，失败单会空转                     |
+| project_doc_max_bytes                  | 32768（32 KiB）                      | 保持 32768                        | 别调大，先拆文件（见 AGENTS.md 条目）        |
+| 熔断轮次                                   | 无内置参数                              | 在 prompt 里写「连续 3 次」★            | Codex 没有 max_iterations，只能靠提示词  |
+| web_search                             | cached                             | 涉及外部文档时改 live                   | 平时保持 cached 省钱                  |
+| -o / --output-last-message             | 无                                  | 必配，落盘回执                         | 否则只能从 JSONL 里掏                  |
+| sandbox_workspace_write.network_access | false                              | 保持 false，需要装依赖时临时 -c 打开         | 验证命令依赖网络时会莫名失败                  |
+| CODEX_API_KEY                          | 无                                  | CI / cron 场景必配                  | 避免 runner 读 ~/.codex/auth.json  |
 
 ### 常见坑
 
@@ -336,14 +360,14 @@ P0。排在 AGENTS.md、Hooks、并行分档之前——没有合格的单，后
 
 ### 信息来源
 
-1. OpenAI 官方 Best practices（四要素 Goal/Context/Constraints/Done when、AGENTS.md 分层）：https://developers.openai.com/codex/learn/best-practices
-2. codex exec JSONL Reference（事件 schema、全部 flag、--output-schema、CI 模式）：https://codex.danielvaughan.com/2026/04/08/codex-exec-jsonl-reference
-3. Codex CLI Non-Interactive Pipelines（exec / resume / fork、结构化输出）：https://codex.danielvaughan.com/2026/05/03/codex-cli-non-interactive-pipelines-exec-resume-structured-output
-4. Codex CLI Automations and Scheduled Tasks（无人值守、沙箱基线、CODEX_API_KEY）：https://codex.danielvaughan.com/2026/03/27/codex-cli-automations-scheduled-tasks
-5. OpenAI Codex changelog（v0.147.0 移除 --full-auto 等）：https://help.openai.com/en/articles/11428266-codex-changelog
-6. Codex CLI Prompting Guide（沙箱 / 审批 / profile / /init 后要人工改）：https://sureprompts.com/blog/codex-cli-prompting-guide
-7. Shipyard Codex CLI Cheatsheet（config 默认值表）：https://qa.shipyard.build/blog/codex-cli-cheat-sheet/
-8. OpenAI Cookbook — Iterating Development Workflows with Codex（GOALS.md / PROMPTS.md / PLANS.md 约定）：https://developers.openai.com/cookbook/examples/codex/iterating-development-workflows-with-codex
+1. OpenAI 官方 Best practices（四要素 Goal/Context/Constraints/Done when、AGENTS.md 分层）：<https://developers.openai.com/codex/learn/best-practices>
+2. codex exec JSONL Reference（事件 schema、全部 flag、--output-schema、CI 模式）：<https://codex.danielvaughan.com/2026/04/08/codex-exec-jsonl-reference>
+3. Codex CLI Non-Interactive Pipelines（exec / resume / fork、结构化输出）：<https://codex.danielvaughan.com/2026/05/03/codex-cli-non-interactive-pipelines-exec-resume-structured-output>
+4. Codex CLI Automations and Scheduled Tasks（无人值守、沙箱基线、CODEX_API_KEY）：<https://codex.danielvaughan.com/2026/03/27/codex-cli-automations-scheduled-tasks>
+5. OpenAI Codex changelog（v0.147.0 移除 --full-auto 等）：<https://help.openai.com/en/articles/11428266-codex-changelog>
+6. Codex CLI Prompting Guide（沙箱 / 审批 / profile / /init 后要人工改）：<https://sureprompts.com/blog/codex-cli-prompting-guide>
+7. Shipyard Codex CLI Cheatsheet（config 默认值表）：<https://qa.shipyard.build/blog/codex-cli-cheat-sheet/>
+8. OpenAI Cookbook — Iterating Development Workflows with Codex（GOALS.md / PROMPTS.md / PLANS.md 约定）：<https://developers.openai.com/cookbook/examples/codex/iterating-development-workflows-with-codex>
 
 ### 待核实
 
@@ -361,29 +385,33 @@ P0。排在 AGENTS.md、Hooks、并行分档之前——没有合格的单，后
 
 【三件证据】
 
-① 可 replay 的 transcript 片段
-每次 codex 调用都会自动往 ~/.codex/sessions/<年>/<月>/<日>/rollout-<UTC 时间>-<session-id>.jsonl 追加一份 append-only 的 JSONL transcript，逐行记录模型看到、想了、执行、产出的全部事件。它与 `codex exec --json` 输出的事件同构，所以同一套 jq 脚本两边都能用。
+① 可 replay 的 transcript 片段  
+每次 codex 调用都会自动往 ~/.codex/sessions/<年>/<月>/<日>/rollout-<UTC 时间>-<session-id>.jsonl 追加一份 append-only 的 JSONL transcript，逐行记录模型看到、想了、执行、产出的全部事件。它与 `codex exec --json` 输出的事件同构，所以同一套 jq 脚本两边都能用。  
 三种用法：
+
 - 事后取证：jq 抽出「跑了哪些命令 / 退出码 / 改了哪些文件 / 每轮 token」。
 - 断点续跑：`codex resume --last` 或 `codex exec resume --last "新指令"` 重放 transcript 恢复完整上下文（含已批准的计划与命令输出，不会重新问一遍权限）。
 - 降噪复盘：`codex debug trace-reduce <rollout>` 把长 trace 压成工具 / 子 agent / 审批边界的摘要（v0.125.0 起）。
 
-② PR 范围回执
+② PR 范围回执  
 两道口径互相印证，缺一不可：
-- 模型自述：结论块里的 changed_files 清单。
-- 客观事实：`git status --short` + `git diff --stat`，以及 JSONL 里的 file_change 事件（changes[].path + kind: add/update/delete）。
-两者必须对齐。模型说改了 3 个文件而 git 显示 7 个，就是越界信号，直接打回。
 
-③ 失败时的报告格式
+- 模型自述：结论块里的 changed_files 清单。
+- 客观事实：`git status --short` + `git diff --stat`，以及 JSONL 里的 file_change 事件（changes[].path + kind: add/update/delete）。  
+  两者必须对齐。模型说改了 3 个文件而 git 显示 7 个，就是越界信号，直接打回。
+
+③ 失败时的报告格式  
 用 `--output-schema` 把回执约束成固定 JSON（result / changed_files / verify{command,exit_code,output_tail} / residual_risk / not_done），脚本可解析、可归档、可 diff。模型填不出合法 JSON 时，降级为标记法（=== BEGIN_JSON === / === END_JSON ===）再加 awk 提取。
 
-【一道拦截：把门禁从软约定变成硬执行】
+【一道拦截：把门禁从软约定变成硬执行】  
 靠提示词要求「跑测试再交回」是软的，模型赶工时会跳过。用 hooks 把它变硬：
+
 - PostToolUse（matcher 命中写文件的工具）+ exit 2：写完就跑检查，不合格就把错误输出替换掉工具结果，模型当场看到并自修，一轮内闭环。
 - Stop（turn 结束时触发）：`{"decision":"block","reason":"…"}` 不是拒绝，而是让 Codex 生成一条续跑提示，逼它回去补验证再交。
 - 关键：新加的 hook 必须先 `/hooks` 授权，未授权的 hook 被静默跳过；改完务必故意造一次失败，确认它真的会拦。
 
 【早间验收的四个动作（5 分钟内完成）】
+
 1. 看 handoff.json 的 result 字段：pass / fail / blocked。
 2. 看 git diff --stat，和 changed_files 对齐，扫一眼有没有越界文件。
 3. 看 verify.command 与 exit_code——必须是你在契约里指定的那条命令，不是它自己临时想出来的。
@@ -391,228 +419,248 @@ P0。排在 AGENTS.md、Hooks、并行分档之前——没有合格的单，后
 
 ### 可直接复制的模板命令配置
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜回执 schema：~/.codex/schemas/handoff.json】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜回执 schema：~/.codex/schemas/handoff.json】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["result", "changed_files", "verify", "residual_risk", "not_done"],
-  "properties": {
-    "result": { "enum": ["pass", "fail", "blocked"] },
-    "changed_files": { "type": "array", "items": { "type": "string" } },
-    "verify": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["command", "exit_code", "output_tail"],
-      "properties": {
-        "command": { "type": "string" },
-        "exit_code": { "type": "integer" },
-        "output_tail": { "type": "string" }
-      }
-    },
-    "residual_risk": { "type": "string" },
-    "not_done": { "type": "string" }
-  }
+{  
+"$schema": "<https://json-schema.org/draft/2020-12/schema>",  
+"type": "object",  
+"additionalProperties": false,  
+"required": ["result", "changed_files", "verify", "residual_risk", "not_done"],  
+"properties": {  
+"result": { "enum": ["pass", "fail", "blocked"] },  
+"changed_files": { "type": "array", "items": { "type": "string" } },  
+"verify": {  
+"type": "object",  
+"additionalProperties": false,  
+"required": ["command", "exit_code", "output_tail"],  
+"properties": {  
+"command": { "type": "string" },  
+"exit_code": { "type": "integer" },  
+"output_tail": { "type": "string" }  
+}  
+},  
+"residual_risk": { "type": "string" },  
+"not_done": { "type": "string" }  
+}  
 }
 
-配套要求（写进 prompt 末尾）：
+配套要求（写进 prompt 末尾）：  
 「最终回复必须是符合上述 schema 的单个 JSON 对象，不要加 Markdown 代码围栏，不要加解释文字。output_tail 填验证命令最后 40 行原文。」
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜门禁脚本：~/bin/codex-gate（无人值守跑单 + 自动验收）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜门禁脚本：~/bin/codex-gate（无人值守跑单 + 自动验收）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 #!/usr/bin/env bash
+
 # 用法：codex-gate ./tasks/xxx.md ~/repos/myapp
-set -uo pipefail
+
+set -uo pipefail  
 TASK_FILE="$1"; REPO="${2:-$PWD}"
-STAMP="$(date +%Y%m%d-%H%M%S)"
+STAMP="$(date +%Y%m%d-%H%M%S)"  
 OUT="$HOME/codex-orders/$STAMP"; mkdir -p "$OUT"
 cd "$REPO" || exit 1
 
 # ① 跑单：JSONL 全量留痕 + 结构化回执落盘
-codex exec \
-  --cd "$REPO" \
-  --sandbox workspace-write \
-  --ask-for-approval never \
-  --json \
-  --output-schema "$HOME/.codex/schemas/handoff.json" \
-  -o "$OUT/handoff.json" \
+
+codex exec   
+--cd "$REPO" \   --sandbox workspace-write \   --ask-for-approval never \   --json \   --output-schema "$HOME/.codex/schemas/handoff.json"   
+-o "$OUT/handoff.json" \
   "$(cat "$TASK_FILE")" \
   2> "$OUT/stderr.log" > "$OUT/events.jsonl"
 EXEC_RC=$?
 
 # ② 门禁 A：turn 级别有没有失败
-echo "== 门禁 A：turn 状态 =="
+
+echo "== 门禁 A：turn 状态 =="  
 if jq -e 'select(.type=="turn.failed")' "$OUT/events.jsonl" >/dev/null 2>&1; then
   echo "[FAIL] 存在 turn.failed"
-  jq -c 'select(.type=="turn.failed" or .type=="error")' "$OUT/events.jsonl"
-fi
+  jq -c 'select(.type=="turn.failed" or .type=="error")' "$OUT/events.jsonl"  
+fi  
 if [ "$EXEC_RC" -ne 0 ]; then echo "[FAIL] codex exec 退出码 $EXEC_RC"; fi
 
 # ③ 门禁 B：有没有非 0 退出的命令
-echo "== 门禁 B：命令退出码 =="
-jq -r 'select(.type=="item.completed" and .item.type=="command_execution" and .item.exit_code!=0)
-       | "[非0] exit=\(.item.exit_code)\t\(.item.command)"' "$OUT/events.jsonl"
+
+echo "== 门禁 B：命令退出码 =="  
+jq -r 'select(.type=="item.completed" and .item.type=="command_execution" and .item.exit_code!=0)  
+| "[非0] exit=(.item.exit_code)\t(.item.command)"' "$OUT/events.jsonl"
 
 # ④ 门禁 C：模型自述的改动 vs git 实际改动，必须对齐
-echo "== 门禁 C：范围回执对齐 =="
+
+echo "== 门禁 C：范围回执对齐 =="  
 git status --short > "$OUT/git-status.txt"
-git diff --stat  > "$OUT/git-diff-stat.txt"
-jq -r '.changed_files[]?' "$OUT/handoff.json" 2>/dev/null | sort > "$OUT/claimed.txt"
-git status --porcelain | awk '{print $NF}' | sort > "$OUT/actual.txt"
+git diff --stat  > "$OUT/git-diff-stat.txt"  
+jq -r '.changed_files[]?' "$OUT/handoff.json" 2>/dev/null | sort > "$OUT/claimed.txt"  
+git status --porcelain | awk '{print $NF}' | sort > "$OUT/actual.txt"  
 if diff -u "$OUT/claimed.txt" "$OUT/actual.txt" > "$OUT/scope-diff.txt"; then
   echo "[OK] 自述与实际一致"
 else
   echo "[WARN] 自述与实际不一致，疑似越界："
-  cat "$OUT/scope-diff.txt"
+  cat "$OUT/scope-diff.txt"  
 fi
 
 # ⑤ 门禁 D：token 计量（成本敏感必看）
-echo "== 门禁 D：用量 =="
+
+echo "== 门禁 D：用量 =="  
 jq -s '[.[] | select(.type=="turn.completed") | .usage.input_tokens] | add' "$OUT/events.jsonl" | xargs -I{} echo "input_tokens={}"
-jq -s '[.[] | select(.type=="turn.completed") | .usage.cached_input_tokens] | add' "$OUT/events.jsonl" | xargs -I{} echo "cached_input_tokens={}"
+jq -s '[.[] | select(.type=="turn.completed") | .usage.cached_input_tokens] | add' "$OUT/events.jsonl" | xargs -I{} echo "cached_input_tokens={}"  
 jq -s '[.[] | select(.type=="turn.completed") | .usage.output_tokens] | add' "$OUT/events.jsonl" | xargs -I{} echo "output_tokens={}"
 
 # ⑥ 汇总
-echo "== 回执 =="
-if [ -s "$OUT/handoff.json" ]; then jq . "$OUT/handoff.json"; else
-  echo "[FAIL] 无结构化回执，见 $OUT/events.jsonl / stderr.log"
+
+echo "== 回执 =="  
+if [ -s "$OUT/handoff.json" ]; then jq . "$OUT/handoff.json"; else  
+echo "[FAIL] 无结构化回执，见 $OUT/events.jsonl / stderr.log"
 fi
 echo "产物目录：$OUT"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜transcript 取证：jq 片段集（rollout 与 exec --json 通用）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜transcript 取证：jq 片段集（rollout 与 exec --json 通用）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 今天的 rollout 目录
+
 D=~/.codex/sessions/$(date +%Y/%m/%d)
 
 # 事件类型分布（快速判断单子跑得顺不顺）
+
 cat $D/rollout-*.jsonl | jq -r '.type' | sort | uniq -c | sort -rn
 
 # 模型实际跑了哪些命令 + 退出码（最关键的一条）
-cat $D/rollout-*.jsonl | jq -r 'select(.item.type=="command_execution")
-  | "\(.item.exit_code)\t\(.item.command)"'
+
+cat $D/rollout-*.jsonl | jq -r 'select(.item.type=="command_execution")  
+| "(.item.exit_code)\t(.item.command)"'
 
 # 改了哪些文件（add / update / delete）
-cat $D/rollout-*.jsonl | jq -r 'select(.item.type=="file_change") | .item.changes[] | "\(.kind)\t\(.path)"'
+
+cat $D/rollout-*.jsonl | jq -r 'select(.item.type=="file_change") | .item.changes[] | "(.kind)\t(.path)"'
 
 # 审批决策（有没有绕过你的授权）
-cat $D/rollout-*.jsonl | jq -r 'select(.item.type=="approval_decision") | "\(.item.action)\t\(.item.decision)"'
+
+cat $D/rollout-*.jsonl | jq -r 'select(.item.type=="approval_decision") | "(.item.action)\t(.item.decision)"'
 
 # 每轮 token（成本归因）
+
 cat $D/rollout-*.jsonl | jq -r 'select(.type=="turn.completed") | .usage'
 
 # 长 trace 压成摘要（v0.125.0+，排查子 agent 分支极好用）
+
 codex debug trace-reduce $D/rollout-*.jsonl
 
 # 拿到 session id，用于精确 replay
+
 cat $D/rollout-*.jsonl | jq -r 'select(.type=="thread.started") | .thread_id'
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜replay 三件套】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜replay 三件套】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 交互式续跑最近的会话（保留完整审批历史，不会重复问权限）
+
 codex resume --last
 
 # 按 session id 精确续跑
+
 codex resume 0199a213-81c0-7800-8aa1-bbab2a035a53
 
 # 非交互式续跑，并追加新指令（CI / 定时任务的正确姿势）
+
 codex exec resume --last "现在给你刚才改的文件补单元测试，然后重跑验证命令"
 
 # 跨目录找会话（默认只筛当前工作目录）
-codex resume --all
+
+codex resume --all  
 codex resume --cd /path/to/other/project --last
 
 # 分叉：保留原 transcript 不动，另起一条线程探索（v0.148.0+）
+
 codex exec fork --last "试试另一种实现，不要动我之前那版"
 
 # 把整段 TUI 会话导出成 Markdown 归档（v0.148.0+）
+
 /export ~/codex-orders/2026-08-31-login-fix.md
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜硬拦截：hooks 配置（两种写法，二选一）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜硬拦截：hooks 配置（两种写法，二选一）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ▸ 写法 A：config.toml（较新，推荐）
 
 # ~/.codex/config.toml
-[features]
+
+[features]  
 codex_hooks = true
 
-[[hooks.PostToolUse]]
+[[hooks.PostToolUse]]  
 matcher = "Edit|Write"
 
-[[hooks.PostToolUse.hooks]]
-type = "command"
-command = 'npx tsc --noEmit >&2 || exit 2'
+[[hooks.PostToolUse.hooks]]  
+type = "command"  
+command = 'npx tsc --noEmit >&2 || exit 2'  
 timeout = 120
 
 ▸ 写法 B：hooks.json（项目级 .codex/hooks.json 或全局 ~/.codex/hooks.json，两者叠加）
 
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "apply_patch|write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./scripts/verify-fast.sh",
-            "statusMessage": "门禁：跑类型检查与受影响单测...",
-            "timeout": 120
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.codex/hooks/stop-gate.py",
-            "timeout": 180
-          }
-        ]
-      }
-    ]
-  }
+{  
+"hooks": {  
+"PostToolUse": [  
+{  
+"matcher": "apply_patch|write",  
+"hooks": [  
+{  
+"type": "command",  
+"command": "./scripts/verify-fast.sh",  
+"statusMessage": "门禁：跑类型检查与受影响单测...",  
+"timeout": 120  
+}  
+]  
+}  
+],  
+"Stop": [  
+{  
+"hooks": [  
+{  
+"type": "command",  
+"command": "python3 ~/.codex/hooks/stop-gate.py",  
+"timeout": 180  
+}  
+]  
+}  
+]  
+}  
 }
 
 配套脚本 ./scripts/verify-fast.sh（exit 0 放行 / exit 2 阻断并把 stderr 喂回模型）：
 
-#!/usr/bin/env bash
-set -uo pipefail
-npx tsc --noEmit || { echo "类型检查失败，请先修好再继续"; exit 2; }
-pnpm vitest run --changed --passWithNoTests || { echo "受影响单测失败"; exit 2; }
+#!/usr/bin/env bash  
+set -uo pipefail  
+npx tsc --noEmit || { echo "类型检查失败，请先修好再继续"; exit 2; }  
+pnpm vitest run --changed --passWithNoTests || { echo "受影响单测失败"; exit 2; }  
 exit 0
 
 配套 ~/.codex/hooks/stop-gate.py（turn 结束时检查回执齐不齐，不齐就续跑）：
 
-#!/usr/bin/env python3
-import json, sys, subprocess
-payload = json.load(sys.stdin)
-msg = payload.get("last_assistant_message", "")
-need = ["git diff --stat", "exit"]
-if not all(k in msg for k in need):
-    print(json.dumps({
-        "decision": "block",
-        "reason": "交回前必须补：验证命令原文 + exit code + git diff --stat。补齐后重新交回。"
-    }))
-    sys.exit(0)
+#!/usr/bin/env python3  
+import json, sys, subprocess  
+payload = json.load(sys.stdin)  
+msg = payload.get("last_assistant_message", "")  
+need = ["git diff --stat", "exit"]  
+if not all(k in msg for k in need):  
+print(json.dumps({  
+"decision": "block",  
+"reason": "交回前必须补：验证命令原文 + exit code + git diff --stat。补齐后重新交回。"  
+}))  
+sys.exit(0)  
 print(json.dumps({"continue": True}))
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜失败报告格式（写进契约，要求模型照填）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜失败报告格式（写进契约，要求模型照填）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ### 结论
+
 - 结果：失败
 - 失败阶段：实现 / 验证 / 环境（三选一）
 - 复现命令：<原样可粘贴>
@@ -625,37 +673,40 @@ print(json.dumps({"continue": True}))
 - 我未做的事：<一句话>
 
 配套的 blocked（阻塞）分支另加两条：
+
 - 阻塞原因：缺权限 / 缺密钥 / 缺外网 / 需人工决策
 - 解锁条件：<做完这一步我就能继续>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【7｜可观测：把门禁接到 OTel（可选，进阶）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【7｜可观测：把门禁接到 OTel（可选，进阶）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # ~/.codex/config.toml
-[otel]
+
+[otel]  
 log_user_prompt = false
 
-exporter = { otlp-grpc = {
-  endpoint = "http://localhost:4317"
+exporter = { otlp-grpc = {  
+endpoint = "<http://localhost:4317>"  
 }}
 
 开启后 Codex 会输出会话生命周期、API 请求 span、工具审批决策、工具执行结果的结构化 trace，可直接进 Jaeger / Grafana Tempo。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【8｜审计归档脚本（合规 / 留档场景）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【8｜审计归档脚本（合规 / 留档场景）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 #!/usr/bin/env bash
+
 # ~/bin/codex-audit <rollout.jsonl>
+
 F="$1"
 echo "=== Codex 会话审计报告 ==="
 echo "Session: $(jq -r 'select(.type=="thread.started") | .thread_id' "$F")"
 echo "--- 执行的命令 ---"
-jq -r 'select(.item.type=="command_execution")
-  | "\(.item.status) exit=\(.item.exit_code) \(.item.command)"' "$F"
-echo "--- 改动的文件 ---"
-jq -r 'select(.item.type=="file_change") | .item.changes[] | "\(.kind) \(.path)"' "$F"
+jq -r 'select(.item.type=="command_execution")   | "\(.item.status) exit=\(.item.exit_code) \(.item.command)"' "$F"  
+echo "--- 改动的文件 ---"  
+jq -r 'select(.item.type=="file_change") | .item.changes[] | "(.kind) (.path)"' "$F"
 echo "--- 审批决策 ---"
 jq -r 'select(.item.type=="approval_decision") | "\(.item.action): \(.item.decision)"' "$F"
 
@@ -663,21 +714,21 @@ jq -r 'select(.item.type=="approval_decision") | "\(.item.action): \(.item.decis
 
 官方默认值 → 一人公司推荐值（★=必须改）
 
-| 参数 / 机制 | 官方默认 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| rollout 落盘 | 每次调用都写 | 保持（不要加 --ephemeral） | 唯一例外是处理敏感数据 |
-| --ephemeral | 关闭 | 保持关闭 ★ | 加了就没有 transcript，门禁第①件证据直接消失 |
-| rollout 路径 | ~/.codex/sessions/<年>/<月>/<日>/ | 保持 | session id 服务端生成，不能用 CLI 覆写 |
-| aggregated_output 截断 | 64 KiB | 知道即可，别当完整证据 | 超长日志末尾是 `...(truncated)` |
-| hooks timeout | 600 秒 | 30–180 秒 ★ | 默认太长，无人值守失败单会空转 |
-| hook 退出码 | 0 通过 / 2 阻断 / 其他仅告警 | 门禁用 2 ★ | exit 2 时 stderr 作为原因喂回模型 |
-| Stop 事件输出 | 必须 JSON | 必须 JSON ★ | 纯文本在 Stop 事件上无效 |
-| [features] codex_hooks | false（实验特性） | true ★ | 不开就没有硬拦截 |
-| CODEX_SESSION_ID 环境变量 | v0.148.0 起可用 | hook 里用它关联 transcript | 便于回执与 rollout 对账 |
-| history.persistence | none | save-all（想做周回顾时） | 与 rollout 是两套东西 |
-| --output-schema | 无 | 必配 ★ | 回执能否被脚本解析的分水岭 |
-| approval_policy | on-request | 无人值守 never ★ | 非 TTY 下不设会挂死 |
-| --ask-for-approval never + sandbox | — | workspace-write ★ | 二者必须成对显式写 |
+| 参数 / 机制                            | 官方默认                           | 一人公司推荐值               | 说明                           |
+| ---------------------------------- | ------------------------------ | --------------------- | ---------------------------- |
+| rollout 落盘                         | 每次调用都写                         | 保持（不要加 --ephemeral）   | 唯一例外是处理敏感数据                  |
+| --ephemeral                        | 关闭                             | 保持关闭 ★                | 加了就没有 transcript，门禁第①件证据直接消失 |
+| rollout 路径                         | ~/.codex/sessions/<年>/<月>/<日>/ | 保持                    | session id 服务端生成，不能用 CLI 覆写  |
+| aggregated_output 截断               | 64 KiB                         | 知道即可，别当完整证据           | 超长日志末尾是 `...(truncated)`     |
+| hooks timeout                      | 600 秒                          | 30–180 秒 ★            | 默认太长，无人值守失败单会空转              |
+| hook 退出码                           | 0 通过 / 2 阻断 / 其他仅告警            | 门禁用 2 ★               | exit 2 时 stderr 作为原因喂回模型     |
+| Stop 事件输出                          | 必须 JSON                        | 必须 JSON ★             | 纯文本在 Stop 事件上无效              |
+| [features] codex_hooks             | false（实验特性）                    | true ★                | 不开就没有硬拦截                     |
+| CODEX_SESSION_ID 环境变量              | v0.148.0 起可用                   | hook 里用它关联 transcript | 便于回执与 rollout 对账             |
+| history.persistence                | none                           | save-all（想做周回顾时）      | 与 rollout 是两套东西              |
+| --output-schema                    | 无                              | 必配 ★                  | 回执能否被脚本解析的分水岭                |
+| approval_policy                    | on-request                     | 无人值守 never ★          | 非 TTY 下不设会挂死                 |
+| --ask-for-approval never + sandbox | —                              | workspace-write ★     | 二者必须成对显式写                    |
 
 必须改的四项：--ephemeral 不加、codex_hooks=true、门禁脚本 exit 2、--output-schema 配好。这四项缺一项，门禁就退化回「模型的自述」。
 
@@ -728,15 +779,15 @@ P0。与契约式派单模板并列为第一优先级：契约负责「下单对
 
 ### 信息来源
 
-1. Codex CLI Rollout Files: Session Recording, Replay, and Audit Trails（路径结构、事件类型、jq 取证、resume / fork、审计脚本、OTel）：https://codex.danielvaughan.com/2026/04/29/codex-cli-rollout-files-session-recording-replay-audit-trails
-2. codex exec --json event cheatsheet（完整事件 schema、字段、退出码语义、64 KiB 截断）：https://littlebearapps.com/help/untether/exec-json-cheatsheet
-3. codex exec JSONL Reference（flag 全表、--output-schema、CI 模式、schema drift 警告）：https://codex.danielvaughan.com/2026/04/08/codex-exec-jsonl-reference
-4. Codex CLI Non-Interactive Pipelines（exec / resume / fork、结构化输出）：https://codex.danielvaughan.com/2026/05/03/codex-cli-non-interactive-pipelines-exec-resume-structured-output
-5. Codex CLI Hooks Reference（事件表、stdin/stdout schema、退出码、限制）：https://symposium.dev/design/agent-details/codex-cli.html
-6. Codex CLI Best Practice: Hooks（hooks.json 结构、各事件输入输出、Stop 的 block 语义）：https://github.com/shanraisshan/codex-cli-best-practice/blob/main/best-practice/codex-hooks.md
-7. Codex CLI v0.148.0 Release Notes（/export、exec fork、异步 hooks、成本估算）：https://codex.danielvaughan.com/2026/08/19/codex-cli-v0148-release-markdown-export-async-hooks-mcp-cost-visibility-bedrock-runtime-session-fork
-8. OpenAI Codex changelog（v0.147.0 移除 --full-auto、v0.150.0 Interrupt hooks）：https://help.openai.com/en/articles/11428266-codex-changelog
-9. Codex CLI Automations and Scheduled Tasks（无人值守、Triage 收件箱、worktree）：https://codex.danielvaughan.com/2026/03/27/codex-cli-automations-scheduled-tasks
+1. Codex CLI Rollout Files: Session Recording, Replay, and Audit Trails（路径结构、事件类型、jq 取证、resume / fork、审计脚本、OTel）：<https://codex.danielvaughan.com/2026/04/29/codex-cli-rollout-files-session-recording-replay-audit-trails>
+2. codex exec --json event cheatsheet（完整事件 schema、字段、退出码语义、64 KiB 截断）：<https://littlebearapps.com/help/untether/exec-json-cheatsheet>
+3. codex exec JSONL Reference（flag 全表、--output-schema、CI 模式、schema drift 警告）：<https://codex.danielvaughan.com/2026/04/08/codex-exec-jsonl-reference>
+4. Codex CLI Non-Interactive Pipelines（exec / resume / fork、结构化输出）：<https://codex.danielvaughan.com/2026/05/03/codex-cli-non-interactive-pipelines-exec-resume-structured-output>
+5. Codex CLI Hooks Reference（事件表、stdin/stdout schema、退出码、限制）：<https://symposium.dev/design/agent-details/codex-cli.html>
+6. Codex CLI Best Practice: Hooks（hooks.json 结构、各事件输入输出、Stop 的 block 语义）：<https://github.com/shanraisshan/codex-cli-best-practice/blob/main/best-practice/codex-hooks.md>
+7. Codex CLI v0.148.0 Release Notes（/export、exec fork、异步 hooks、成本估算）：<https://codex.danielvaughan.com/2026/08/19/codex-cli-v0148-release-markdown-export-async-hooks-mcp-cost-visibility-bedrock-runtime-session-fork>
+8. OpenAI Codex changelog（v0.147.0 移除 --full-auto、v0.150.0 Interrupt hooks）：<https://help.openai.com/en/articles/11428266-codex-changelog>
+9. Codex CLI Automations and Scheduled Tasks（无人值守、Triage 收件箱、worktree）：<https://codex.danielvaughan.com/2026/03/27/codex-cli-automations-scheduled-tasks>
 
 ### 待核实
 
@@ -753,18 +804,21 @@ P0。与契约式派单模板并列为第一优先级：契约负责「下单对
 
 AGENTS.md 是 Codex 每次会话自动加载的项目说明书。它的价值不在「写全」，而在「每一条都在改变模型的行为」。
 
-【加载机制（决定了写法）】
+【加载机制（决定了写法）】  
 Codex 在会话启动时一次性构建指令链，顺序是：
+
 1. 全局层：~/.codex/AGENTS.override.md（存在就用它），否则 ~/.codex/AGENTS.md
 2. 项目层：从 Git 根目录一路向下走到你的当前工作目录，每个目录里按 AGENTS.override.md → AGENTS.md → project_doc_fallback_filenames 里的备用名（如 CODEX.md、.agents.md、TEAM_GUIDE.md）的顺序取**第一个存在的文件**，每个目录最多取一个
 3. 合并：按「根 → 叶」顺序拼接。越靠近你工作目录的文件排在越后面，因此优先级越高
 
 三个必须记住的细节：
+
 - 全局文件作为 user instructions 单独传入，**不占用** project_doc_max_bytes 预算。精简全局文件换不来项目层的空间，但它照样吃上下文窗口，所以还是要短。
 - 项目层文件累计超过 project_doc_max_bytes（默认 32768 字节 / 32 KiB）时，**越过预算的那个文件被前缀截断，它之后的所有文件被整个跳过**。这一过程只写一条 tracing::warn，TUI 里看不到，是彻底的静默失败（openai/codex#7138）。
 - 因为是「根 → 叶」拼接，越深、越具体、你最近才写的文件排在越后面，也就**越先被砍掉**。症状是：模型遵守你含糊的根级规则，却无视你刚加的详细服务级规则——看起来像模型退步了，其实是字节预算超了。
 
 【为什么啰嗦会烧钱】
+
 1. 每一条规则都是每次请求都重复付的税。AGENTS.md 在系统提示里，每个 turn 都要重发一遍；一个 8000 token 的 AGENTS.md，跑 40 轮就是 32 万 token 的输入成本。命中缓存能打折，但缓存命中的部分照样计费，且长会话 compact 后还要重付。
 2. 无效规则是纯亏损。模型已经知道的东西（`export default function` 是 React 组件、pytest 怎么跑）写进去不会让它更聪明，只会挤掉上下文。
 3. 挤掉的是真正稀缺的东西——对话窗口。规则越长，留给代码、报错、diff 的空间越小，模型越容易在长任务里失忆，进而需要更多轮次补救。
@@ -772,6 +826,7 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 5. 叠加效应：MCP server 的 tool schema 也吃上下文，长 AGENTS.md + 一堆 MCP server 会一起把窗口吃穿。
 
 【必写项（只写这些）】
+
 - 仓库布局与关键目录
 - 怎么跑起来 / 构建 / 测试 / lint 的**确切命令**
 - 工程约定（命名、错误处理模式、测试框架选型）
@@ -780,6 +835,7 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 - Codex 从代码里推断不出来的项目特有行为
 
 【禁忌】
+
 - 不写模型已知的通识
 - 不放长示例（只留规则，示例放 skills 或 docs）
 - 不写「遵循最佳实践」这类无约束力的软话
@@ -787,18 +843,19 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 - 不留空的 AGENTS.override.md（空文件也会遮蔽同级 AGENTS.md，导致该目录贡献为零）
 - 不写会随代码腐化的内容（具体函数名、行号）
 
-【维护节奏】
+【维护节奏】  
 `/init` 生成脚手架 → 人工删掉一半 → 之后只在「同一个错误出现第二次」时追加一条。每加一条，就想清楚它换掉了哪一条。
 
 ### 可直接复制的模板命令配置
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜三层结构模板（推荐长度：20 / 50 / 30 行）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜三层结构模板（推荐长度：20 / 50 / 30 行）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ▸ Layer 1 · ~/.codex/AGENTS.md（全局个人偏好，控制在 20 行内）
 
 # Working Agreements
+
 - 修改源码后必须跑测试
 - 装依赖优先用 pnpm
 - 新增生产依赖前先问我
@@ -808,6 +865,7 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 ▸ Layer 2 · 仓库根 AGENTS.md（项目约定，控制在 50 行内）
 
 # Repository Rules
+
 - 测试用 Vitest，不要用 Jest
 - 错误处理照抄 src/lib/errors.ts 的模式
 - 提 PR 前跑 pnpm lint && pnpm test
@@ -818,6 +876,7 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 ▸ Layer 3 · 子目录 AGENTS.md（模块特有规则，控制在 30 行内）
 
 # Payments Service Rules
+
 - 一律走统一错误处理器，不要裸 throw
 - 所有公开端点必须加限流
 - 必须走 payments 专用连接池
@@ -826,6 +885,7 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 ▸ 覆盖层 · 子目录 AGENTS.override.md（临时规则，用完即删）
 
 # TEMPORARY: v3 迁移完成后删除（目标 2026-09-30）
+
 - 新端点一律用 src/routes/v3/ 的 v3 router
 - 不要动任何 v1 / v2 路由
 - 迁移跟踪文档：docs/v3-migration.md
@@ -833,20 +893,23 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 
 注意：同目录下同时存在 AGENTS.override.md 与 AGENTS.md 时，**只有 override 生效**，普通 AGENTS.md 被完全忽略。全局层同理。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜完整中文范例（一人公司 / 单体 Web 项目，可直接抄）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜完整中文范例（一人公司 / 单体 Web 项目，可直接抄）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 项目说明
+
 个人独立开发的 Next.js + FastAPI 单体项目。目标是低成本、可异步验收。
 
 ## 目录
+
 - apps/web        前端，Next.js + TypeScript
 - apps/api        后端，FastAPI（Python 3.12）
 - migrations      数据库迁移，改动需显式批准
 - tests           端到端测试
 
 ## 常用命令
+
 - 前端单测：pnpm --filter web vitest run <文件路径>
 - 后端单测：cd apps/api && uv run pytest -q <文件路径>
 - 类型检查：pnpm --filter web tsc --noEmit
@@ -854,12 +917,14 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 - 全量本地校验：pnpm lint && pnpm test
 
 ## 约定
+
 - TypeScript 用 camelCase，Python 用 snake_case
 - 错误处理统一走 apps/api/src/lib/errors.py 的 AppError
 - 新增 API 必须在 apps/api/src/routes/ 下注册并补一条 e2e
 - 不要引入新依赖；确实需要就先问我
 
 ## 派单契约（默认遵守）
+
 - 开工前先复述：可编辑范围 / 禁止改动范围 / 验证命令 / 收尾动作
 - 验证命令必须原样执行并贴原始输出与 exit code
 - 同一条命令连续失败 3 次就停下报告
@@ -867,46 +932,56 @@ Codex 在会话启动时一次性构建指令链，顺序是：
 - 交回必带：验证输出原文、git status --short、git diff --stat、结论块
 
 ## 禁止
+
 - 不要重构无关代码
 - 不要动 migrations/ 与公开 API 响应格式
 - 不要 git commit / git push
 - 不要升级依赖版本
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜配置片段：~/.codex/config.toml 相关项】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜配置片段：~/.codex/config.toml 相关项】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 项目级 AGENTS.md 的累计字节预算，默认 32768（32 KiB）
+
 project_doc_max_bytes = 32768
 
 # 若团队已有文档，可让 Codex 也认这些文件名（按序回退）
+
 project_doc_fallback_filenames = ["AGENTS.md", "CODEX.md", ".agents.md", "TEAM_GUIDE.md"]
 
 # 万不得已才调大；优先拆文件
+
 # project_doc_max_bytes = 65536
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜体积体检：一行命令看有没有超预算】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜体积体检：一行命令看有没有超预算】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 列出从 Git 根到当前目录，每层实际会加载的那个文件及其字节数
+
 # （人工版：先看有哪些候选文件）
+
 find . -name "AGENTS.md" -o -name "AGENTS.override.md" | sort
 
 # 全局文件（不计入 project_doc_max_bytes，但照样吃上下文）
+
 wc -c ~/.codex/AGENTS.md ~/.codex/AGENTS.override.md 2>/dev/null
 
 # 项目层累计字节（判断是否逼近 32768）
+
 find . -name "AGENTS*.md" -not -path "*/node_modules/*" -exec wc -c {} + | tail -1
 
 # 有没有被遗忘的 override（最常见的「规则莫名其妙不生效」元凶）
+
 find . -name "AGENTS.override.md" -type f
 
 # 有没有空文件在遮蔽同级 AGENTS.md
+
 find . -name "AGENTS*.md" -type f -empty
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜诊断 prompt：让 Codex 自己报告加载了什么】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜诊断 prompt：让 Codex 自己报告加载了什么】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 用法：`codex --sandbox read-only --ask-for-approval on-request "<下面这段>"`
@@ -915,40 +990,43 @@ find . -name "AGENTS*.md" -type f -empty
 
 ▸ 精简版（日常快速检查用）：
 
-codex --sandbox read-only --ask-for-approval on-request \
-  "Summarize the current instructions and list all instruction files you loaded."
+codex --sandbox read-only --ask-for-approval on-request   
+"Summarize the current instructions and list all instruction files you loaded."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜让 Codex 帮你生成初稿（/init 之后再人工砍一半）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜让 Codex 帮你生成初稿（/init 之后再人工砍一半）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 「分析本仓库的结构、测试模式、lint 配置和编码约定，生成一份 AGENTS.md，包含：测试命令、lint 命令、命名约定、文件组织模式，以及你能从代码里推断出的项目特有规则。只写从代码推断不出来的东西，通识不要写。控制在 50 行以内。」
 
 生成后必做：/init 或上面这段生成的是起点不是成品，官方明确说过要人工改成团队真实的构建 / 测试 / review / 发布方式。第一刀通常能砍掉一半。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【7｜瘦身决策表（AGENTS.md 太长时的处置顺序）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【7｜瘦身决策表（AGENTS.md 太长时的处置顺序）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-| 症状 | 先做 | 再做 | 最后才做 |
-|---|---|---|---|
-| 根文件 >50 行 | 删掉模型已知的通识 | 拆到子目录 AGENTS.md | 调大 project_doc_max_bytes |
-| 深层规则不生效 | 查 project_doc_max_bytes 累计 | 拆文件 / 缩短根文件 | 调大到 65536 |
-| 规则多但都想留 | 按服务拆成 <30 行的子文件 | 把长示例移进 skills | — |
-| 临时规则 | 放 AGENTS.override.md，用完删 | — | — |
-| 硬约束（安全 / 合规） | 移进 .rules / execpolicy | — | — |
+| 症状           | 先做                         | 再做              | 最后才做                     |
+| ------------ | -------------------------- | --------------- | ------------------------ |
+| 根文件 >50 行    | 删掉模型已知的通识                  | 拆到子目录 AGENTS.md | 调大 project_doc_max_bytes |
+| 深层规则不生效      | 查 project_doc_max_bytes 累计 | 拆文件 / 缩短根文件     | 调大到 65536                |
+| 规则多但都想留      | 按服务拆成 <30 行的子文件            | 把长示例移进 skills   | —                        |
+| 临时规则         | 放 AGENTS.override.md，用完删   | —               | —                        |
+| 硬约束（安全 / 合规） | 移进 .rules / execpolicy     | —               | —                        |
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【8｜顺手关掉别的上下文大户】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【8｜顺手关掉别的上下文大户】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # ~/.codex/config.toml
+
 # 不用的 MCP server 直接禁用——每个 server 的 tool schema 都常驻上下文
-[mcp_servers.some-unused]
+
+[mcp_servers.some-unused]  
 enabled = false
 
 # 不需要推理摘要时关掉，省输出
-hide_agent_reasoning = true
+
+hide_agent_reasoning = true  
 model_reasoning_summary = "none"
 
 自查命令：/status（看剩余上下文与生效配置）、/mcp（看连了几个 server）
@@ -957,20 +1035,20 @@ model_reasoning_summary = "none"
 
 官方默认值 → 一人公司推荐值（★=必须改）
 
-| 参数 | 官方默认 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| project_doc_max_bytes | 32768（32 KiB） | 保持 32768，不调大 | 触顶是静默截断，调大只是掩盖拆分问题 |
-| project_doc_fallback_filenames | ["AGENTS.md"] | 团队已有文档时加 CODEX.md / .agents.md | 否则不动 |
-| 全局文件是否计入预算 | 否（作为 user instructions 单独传） | — | 精简它换不来项目层空间，但仍省上下文 |
-| Layer 1 全局行数建议 | 无官方规定 | ≤ 20 行 | 社区共识 |
-| Layer 2 根文件行数建议 | 无官方规定 | ≤ 50 行 | 社区共识；另有中文资料给「≤100 行软建议 / 300 行硬上限」 |
-| Layer 3 子目录行数建议 | 无官方规定 | ≤ 30 行 | 社区共识 |
-| 每个目录取几个文件 | 1（override 优先） | 保持 ★ | 同目录放两个等于后一个白写 |
-| model_reasoning_summary | auto | 省钱时改 none | 关掉省输出 token |
-| hide_agent_reasoning | false | CI / 省 token 时 true | — |
-| mcp_servers.*.enabled | true | 不用的设 false ★ | 每个 MCP server 常驻吃上下文 |
-| history.persistence | none | 想做周回顾时 save-all | 与 rollout 是两套机制 |
-| /status | — | 每次怀疑配置时先跑 | 看生效配置与剩余上下文最快的方式 |
+| 参数                             | 官方默认                        | 一人公司推荐值                        | 说明                                 |
+| ------------------------------ | --------------------------- | ------------------------------ | ---------------------------------- |
+| project_doc_max_bytes          | 32768（32 KiB）               | 保持 32768，不调大                   | 触顶是静默截断，调大只是掩盖拆分问题                 |
+| project_doc_fallback_filenames | ["AGENTS.md"]               | 团队已有文档时加 CODEX.md / .agents.md | 否则不动                               |
+| 全局文件是否计入预算                     | 否（作为 user instructions 单独传） | —                              | 精简它换不来项目层空间，但仍省上下文                 |
+| Layer 1 全局行数建议                 | 无官方规定                       | ≤ 20 行                         | 社区共识                               |
+| Layer 2 根文件行数建议                | 无官方规定                       | ≤ 50 行                         | 社区共识；另有中文资料给「≤100 行软建议 / 300 行硬上限」 |
+| Layer 3 子目录行数建议                | 无官方规定                       | ≤ 30 行                         | 社区共识                               |
+| 每个目录取几个文件                      | 1（override 优先）              | 保持 ★                           | 同目录放两个等于后一个白写                      |
+| model_reasoning_summary        | auto                        | 省钱时改 none                      | 关掉省输出 token                        |
+| hide_agent_reasoning           | false                       | CI / 省 token 时 true            | —                                  |
+| mcp_servers.*.enabled          | true                        | 不用的设 false ★                   | 每个 MCP server 常驻吃上下文               |
+| history.persistence            | none                        | 想做周回顾时 save-all                | 与 rollout 是两套机制                    |
+| /status                        | —                           | 每次怀疑配置时先跑                      | 看生效配置与剩余上下文最快的方式                   |
 
 必须改的三项：每个目录只留一个 AGENTS 文件、禁掉不用的 MCP server、把超长根文件拆开。
 
@@ -1019,14 +1097,14 @@ P0。与契约模板、门禁并列第一梯队：契约里的「派单契约 / 
 
 ### 信息来源
 
-1. OpenAI 官方 Best practices（AGENTS.md 覆盖范围、/init、全局 / 仓库 / 子目录三层、超长时的处理建议）：https://developers.openai.com/codex/learn/best-practices
-2. AGENTS.md and Skills Mastery（发现顺序、project_doc_max_bytes 32 KiB、静默前缀截断机制与 openai/codex#7138、三层行数建议、override 模式、诊断 prompt）：https://developertoolkit.ai/en/codex/tips-tricks/agents-md-optimization
-3. Effective Prompting and AGENTS.md Strategies（层级拼接顺序、override 优先级、 Kitchen Sink 等反例、上下文被吃穿的表现）：https://developertoolkit.ai/en/codex/productivity-patterns/prompt-engineering
-4. Shipyard Codex CLI Cheatsheet（project_doc_max_bytes 默认 32768、加载优先级列表、/init）：https://qa.shipyard.build/blog/codex-cli-cheat-sheet/
-5. Codex CLI Hooks Reference（自定义指令作用域、project_doc_fallback_filenames、32 KiB 上限、skills 作用域）：https://symposium.dev/design/agent-details/codex-cli.html
-6. Codex CLI Prompting Guide（/init 生成的是起点不是成品、/status 查生效配置）：https://sureprompts.com/blog/codex-cli-prompting-guide
+1. OpenAI 官方 Best practices（AGENTS.md 覆盖范围、/init、全局 / 仓库 / 子目录三层、超长时的处理建议）：<https://developers.openai.com/codex/learn/best-practices>
+2. AGENTS.md and Skills Mastery（发现顺序、project_doc_max_bytes 32 KiB、静默前缀截断机制与 openai/codex#7138、三层行数建议、override 模式、诊断 prompt）：<https://developertoolkit.ai/en/codex/tips-tricks/agents-md-optimization>
+3. Effective Prompting and AGENTS.md Strategies（层级拼接顺序、override 优先级、 Kitchen Sink 等反例、上下文被吃穿的表现）：<https://developertoolkit.ai/en/codex/productivity-patterns/prompt-engineering>
+4. Shipyard Codex CLI Cheatsheet（project_doc_max_bytes 默认 32768、加载优先级列表、/init）：<https://qa.shipyard.build/blog/codex-cli-cheat-sheet/>
+5. Codex CLI Hooks Reference（自定义指令作用域、project_doc_fallback_filenames、32 KiB 上限、skills 作用域）：<https://symposium.dev/design/agent-details/codex-cli.html>
+6. Codex CLI Prompting Guide（/init 生成的是起点不是成品、/status 查生效配置）：<https://sureprompts.com/blog/codex-cli-prompting-guide>
 7. Codex 最佳实践完整指南（中文资料，给出「100 行以内、硬上限 300 行、作用域优先级」）：ima.qq.com 整理版，2026-05-15
-8. OpenAI Codex changelog（v0.150.0 未信任项目不再提供项目级 AGENTS.md）：https://help.openai.com/en/articles/11428266-codex-changelog
+8. OpenAI Codex changelog（v0.150.0 未信任项目不再提供项目级 AGENTS.md）：<https://help.openai.com/en/articles/11428266-codex-changelog>
 
 ### 待核实
 
@@ -1044,6 +1122,7 @@ P0。与契约模板、门禁并列第一梯队：契约里的「派单契约 / 
 Goal Mode 把 Codex 从「每轮等你重新下命令」的应答式工具，变成「给定终点后自己循环推进直到达成/预算耗尽/被阻塞」的持久化执行器。它的本质不是更长的 prompt，而是一条线程级、可审计的完成契约。
 
 【底层机制：Ralph Loop 四层架构】
+
 1. 持久化层：目标作为独立于对话历史的 thread 状态存储，带状态机。所以 /compact 压缩历史、关掉终端、跨天重启都不会丢目标。
 2. App-server RPC：thread/goal/{get,set,clear} 三个接口，客户端读写目标状态。
 3. 模型工具：get_goal / create_goal / update_goal 三个工具，模型可查询目标、可声明完成，但【不能】自己暂停、清空、篡改状态——这是安全边界，状态转换只能由用户或运行时触发。
@@ -1059,85 +1138,99 @@ Goal Mode 把 Codex 从「每轮等你重新下命令」的应答式工具，变
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜启用（v0.133.0 起默认开启，旧版需手动）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜启用（v0.133.0 起默认开启，旧版需手动）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
-[features]
-goals = true            # v0.128~v0.132 需手动开启；v0.133 起默认
+
+[features]  
+goals = true            # v0.128~v0.132 需手动开启；v0.133 起默认  
 collaboration_modes = true  # 可选，让 /plan 与 /goal 更好配合
+
 # 改完重启 Codex
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜命令面（TUI 内输入）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-/goal "迁移 Pydantic v1 到 v2，让全部测试通过"   # 创建/替换目标
-goal                                                    # 查看当前目标摘要（状态/内容/耗时/token 用量）
-/goal pause       # 暂停，保留审计上下文
-/goal resume      # 恢复（早期叫 /goal unpause，已改名）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜命令面（TUI 内输入）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+/goal "迁移 Pydantic v1 到 v2，让全部测试通过"   # 创建/替换目标  
+goal                                                    # 查看当前目标摘要（状态/内容/耗时/token 用量）  
+/goal pause       # 暂停，保留审计上下文  
+/goal resume      # 恢复（早期叫 /goal unpause，已改名）  
 /goal clear       # 清空，回到单轮模式
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜五段式黄金模板（所有 /goal 都按这个写）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-/goal <一句话目标，避开「全部/所有/彻底/optimize/improve」这类虚词>
-Scope: <只改哪些文件/子系统，其他不要碰>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜五段式黄金模板（所有 /goal 都按这个写）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+/goal <一句话目标，避开「全部/所有/彻底/optimize/improve」这类虚词>  
+Scope: <只改哪些文件/子系统，其他不要碰>  
 Constraints:
-- <硬性约束，必须可机械识别，如「不动 project.pbxproj」>
-- <如「保持现有公开 API 不变」>
-Done when:
-1. <可验证产物，引用具体文件路径或命令>
-2. <如 npm test / pytest -q / tsc --noEmit>
-Stop if:
-- <机械可识别的停止条件，如「需要新增 npm 依赖」>
-Use a token budget of <N> tokens for this goal.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜完整实例（可直接抄）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-/goal 把 src/data/words.json 词库扩展到 1000 个唯一词条。
-Scope: 只改 src/data/words.json，其他文件不要动。
+- <硬性约束，必须可机械识别，如「不动 project.pbxproj」>
+- <如「保持现有公开 API 不变」>  
+  Done when:
+
+1. <可验证产物，引用具体文件路径或命令>
+2. <如 npm test / pytest -q / tsc --noEmit>  
+   Stop if:
+
+- <机械可识别的停止条件，如「需要新增 npm 依赖」>  
+  Use a token budget of <N> tokens for this goal.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜完整实例（可直接抄）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+/goal 把 src/data/words.json 词库扩展到 1000 个唯一词条。  
+Scope: 只改 src/data/words.json，其他文件不要动。  
 Constraints:
+
 - 词条 schema 保持不变（id / word / phonetic / meaning / example）
 - 以 word 字段去重，不允许重复词条
-- 只用真实常见英语单词，不要生造
-Done when:
+- 只用真实常见英语单词，不要生造  
+  Done when:
+
 1. words.json 包含恰好 1000 个唯一词条
 2. 用 tools/validate.js 跑一遍 schema 校验通过
-3. 终端输出最终词条数与文件大小
-Stop if:
+3. 终端输出最终词条数与文件大小  
+   Stop if:
+
 - 需要修改 words.json 以外的任何文件
 - 需要新增 npm 依赖
-- schema 校验失败超过 3 次
-Use a token budget of 80000 tokens.
+- schema 校验失败超过 3 次  
+  Use a token budget of 80000 tokens.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜睡前一单的标准姿势（一人公司异步杠杆）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜睡前一单的标准姿势（一人公司异步杠杆）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 先确认在受信任目录、目标可被测试验证
-cd ~/work/my-repo
-git checkout -b feat/nightly-refactor   # 隔离分支，独占写权限
-codex
+
+cd ~/work/my-repo  
+git checkout -b feat/nightly-refactor   # 隔离分支，独占写权限  
+codex  
 /goal <用上面的五段式模板写清目标，预算必给>
+
 # 合上电脑去睡。第二天早上：
+
 codex resume --last     # 恢复会话，看收尾报告/PR 状态
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜/side 用法】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜/side 用法】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 /side What's the signature of tokio::spawn?   # 主线继续跑，侧问不污染上下文
+
 # Esc / Ctrl+C 退出侧线程，回到主线原位置；/side 不能嵌套、不能改文件
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| features.goals | v0.133.0 起 true；之前 false | true（保持默认） | 旧版手动开启后需重启 |
-| token budget | 无默认，需手动设置 | ★必须设：小任务 100k–500k，中 500k–2M，大迁移 2M–10M | 不设预算=没有软停止，跑飞只能干看烧 token |
-| budget 性质 | advisory（软停止，注入收尾提示，非硬杀） | 理解为「安全网」而非「急刹车」 | 当前无每 goal 的硬性计费封顶，需靠订阅计划限额兜底 |
-| goal 内容长度 | 最长 4000 字符 | 超长时把细节放文件，让 goal 指向文件 | 官方边界 |
-| 状态机 | pursuing / paused / achieved / unmet / budget_limited | — | 模型只能声明 achieved，暂停/清空由用户或运行时触发 |
-| /side 命令集 | 仅 /copy /diff /mention /status | — | 侧线程只读，不能改文件 |
+| 参数             | 官方默认值                                                 | 一人公司推荐值                                 | 说明                             |
+| -------------- | ----------------------------------------------------- | --------------------------------------- | ------------------------------ |
+| features.goals | v0.133.0 起 true；之前 false                              | true（保持默认）                              | 旧版手动开启后需重启                     |
+| token budget   | 无默认，需手动设置                                             | ★必须设：小任务 100k–500k，中 500k–2M，大迁移 2M–10M | 不设预算=没有软停止，跑飞只能干看烧 token       |
+| budget 性质      | advisory（软停止，注入收尾提示，非硬杀）                              | 理解为「安全网」而非「急刹车」                         | 当前无每 goal 的硬性计费封顶，需靠订阅计划限额兜底   |
+| goal 内容长度      | 最长 4000 字符                                            | 超长时把细节放文件，让 goal 指向文件                   | 官方边界                           |
+| 状态机            | pursuing / paused / achieved / unmet / budget_limited | —                                       | 模型只能声明 achieved，暂停/清空由用户或运行时触发 |
+| /side 命令集      | 仅 /copy /diff /mention /status                        | —                                       | 侧线程只读，不能改文件                    |
 
 必须改的一项：token budget 必给。它是 Goal Mode 里唯一「一等公民」的成本治理机制。
 
@@ -1181,12 +1274,12 @@ P0。它是「睡前下单、早上收 PR」这一异步杠杆的核心引擎，
 
 ### 信息来源
 
-1. OpenAI 官方 cookbook《Using Goals in Codex》（goal 定义、6 要素、弱/强 goal 对比、/goal 最长 4000 字符）：https://developers.openai.com/codex
-2. Codex CLI changelog（v0.128.0 /goal 引入、v0.132.0 停止修复、v0.133.0 转正）：https://help.openai.com/en/articles/11428266-codex-changelog
-3. Goal Mode 架构/状态机/budget 软停止详解：https://codex.danielvaughan.com/2026/07/23/codex-cli-goal-mode-long-horizon-autonomous-workflows-ralph-loop-token-budgets
-4. 五段式黄金模板与 Plan 模式坑（should_ignore_goal_for_mode、Issue #19910/#20656）：https://www.aivi.fyi/llms/codex-goal
-5. /side、/fork、/agent 三原语对比：https://codex.danielvaughan.com/2026/07/20/three-parallel-work-primitives-codex-cli-agent-fork-side-concurrency
-6. /goal 成功/失败任务形态与 85% 完成率：https://dev.to/thegdsks/openai-codex-now-finishes-85-of-scoped-tasks-here-is-the-goal-workflow-that-gets-you-there-1dae
+1. OpenAI 官方 cookbook《Using Goals in Codex》（goal 定义、6 要素、弱/强 goal 对比、/goal 最长 4000 字符）：<https://developers.openai.com/codex>
+2. Codex CLI changelog（v0.128.0 /goal 引入、v0.132.0 停止修复、v0.133.0 转正）：<https://help.openai.com/en/articles/11428266-codex-changelog>
+3. Goal Mode 架构/状态机/budget 软停止详解：<https://codex.danielvaughan.com/2026/07/23/codex-cli-goal-mode-long-horizon-autonomous-workflows-ralph-loop-token-budgets>
+4. 五段式黄金模板与 Plan 模式坑（should_ignore_goal_for_mode、Issue #19910/#20656）：<https://www.aivi.fyi/llms/codex-goal>
+5. /side、/fork、/agent 三原语对比：<https://codex.danielvaughan.com/2026/07/20/three-parallel-work-primitives-codex-cli-agent-fork-side-concurrency>
+6. /goal 成功/失败任务形态与 85% 完成率：<https://dev.to/thegdsks/openai-codex-now-finishes-85-of-scoped-tasks-here-is-the-goal-workflow-that-gets-you-there-1dae>
 
 ### 待核实
 
@@ -1215,82 +1308,95 @@ config.toml（主位置 ~/.codex/config.toml）不是「偏好文件」，而是
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜一人公司推荐 config.toml（可直接抄）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜一人公司推荐 config.toml（可直接抄）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
-model = "gpt-5.3-codex"            # 日常编码默认
-model_reasoning_effort = "medium"   # 常规任务 medium，省钱
-approval_policy = "on-request"      # 越界才问，日常少打断
-sandbox_mode = "workspace-write"    # 可写工作区，默认断网
+
+model = "gpt-5.3-codex"            # 日常编码默认  
+model_reasoning_effort = "medium"   # 常规任务 medium，省钱  
+approval_policy = "on-request"      # 越界才问，日常少打断  
+sandbox_mode = "workspace-write"    # 可写工作区，默认断网  
 web_search = "cached"               # 用缓存索引，降低注入风险
 
-[agents]
-max_threads = 6        # 官方默认，够用
+[agents]  
+max_threads = 6        # 官方默认，够用  
 max_depth = 1          # 官方默认，别调大
 
 # 需要装依赖/联网时才临时开网络，别常开
-[sandbox_workspace_write]
+
+[sandbox_workspace_write]  
 network_access = false
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜CI/后台省钱 profile（睡前任务用它）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜CI/后台省钱 profile（睡前任务用它）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/ci.config.toml
-model = "gpt-5.4-mini"
-model_reasoning_effort = "low"
-approval_policy = "never"
-sandbox_mode = "workspace-write"
+
+model = "gpt-5.4-mini"  
+model_reasoning_effort = "low"  
+approval_policy = "never"  
+sandbox_mode = "workspace-write"  
 service_tier = "flex"
 
 # 调用：codex --profile ci "任务"
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜非交互执行（无人值守 CI 的正确姿势）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜非交互执行（无人值守 CI 的正确姿势）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # codex exec 默认 approval=never，且只读；要写必须显式给沙箱
+
 codex exec --sandbox workspace-write "跑测试并修复失败"
+
 # 旧写法（已坏，别用）：
+
 # codex exec --full-auto "..."
+
 # JSON 输出做计量：
+
 codex exec --json --sandbox workspace-write "总结仓库结构" | jq
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜granular 审批（只对沙箱升级提问，自动拒绝技能脚本）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-approval_policy = { granular = {
-  sandbox_approval = true,     # 越沙箱的请求可以问
-  rules = true,                # execpolicy prompt 规则生效
-  mcp_elicitations = false,    # 静音 MCP 副作用提示
-  request_permissions = false, # 自动拒绝权限申请
-  skill_approval = false       # 自动拒绝技能脚本审批
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜granular 审批（只对沙箱升级提问，自动拒绝技能脚本）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+approval_policy = { granular = {  
+sandbox_approval = true,     # 越沙箱的请求可以问  
+rules = true,                # execpolicy prompt 规则生效  
+mcp_elicitations = false,    # 静音 MCP 副作用提示  
+request_permissions = false, # 自动拒绝权限申请  
+skill_approval = false       # 自动拒绝技能脚本审批  
 } }
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜自定义 agent 分档（explorer 用便宜、worker 用贵）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜自定义 agent 分档（explorer 用便宜、worker 用贵）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/agents/explorer.toml
-name = "explorer"
-description = "只读代码库探索，收集证据不提案"
-developer_instructions = "保持探索态，追踪真实执行路径，引用文件与符号，不要提修复建议。"
-model = "gpt-5.4-mini"
-model_reasoning_effort = "low"
+
+name = "explorer"  
+description = "只读代码库探索，收集证据不提案"  
+developer_instructions = "保持探索态，追踪真实执行路径，引用文件与符号，不要提修复建议。"  
+model = "gpt-5.4-mini"  
+model_reasoning_effort = "low"  
 sandbox_mode = "read-only"
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| model | 依发行/登录态（gpt-5.3-codex 为 coding 优化默认） | gpt-5.3-codex（日常）；gpt-5.5（复杂任务，需 ChatGPT 登录） | API key 访问新模型有延迟 |
-| model_reasoning_effort | 官方未明文（一说 high） | ★medium（常规）、low（批量/CI）、high（架构/重构） | 值：minimal/low/medium/high/xhigh |
-| approval_policy | untrusted | ★on-request | 可选：untrusted / on-request / never / granular 表 |
-| sandbox_mode | read-only（未信任目录）；workspace-write（已信任目录） | ★workspace-write | 可选：read-only / workspace-write / danger-full-access |
-| --full-auto | 已移除（v0.147.0） | 改用 --sandbox workspace-write | ★必须改，旧脚本会直接失败 |
-| sandbox_workspace_write.network_access | false | 保持 false，装依赖时临时开 | 忘了开= npm/pip install 卡住 |
-| approvals_reviewer | user | CI 时 auto_review（配合 --approve-for-me） | auto_review 走自动审查，不打断 |
-| agents.max_threads | 6 | 6（保持默认） | 并发线程上限 |
-| agents.max_depth | 1 | 1（别调大） | 调大会反复 fan-out 烧 token |
-| agents.job_max_runtime_seconds | 1800（spawn_agents_on_csv 回退值） | 1800 | 单 worker 超时 |
+| 参数                                     | 官方默认值                                   | 一人公司推荐值                                      | 说明                                                  |
+| -------------------------------------- | --------------------------------------- | -------------------------------------------- | --------------------------------------------------- |
+| model                                  | 依发行/登录态（gpt-5.3-codex 为 coding 优化默认）    | gpt-5.3-codex（日常）；gpt-5.5（复杂任务，需 ChatGPT 登录） | API key 访问新模型有延迟                                    |
+| model_reasoning_effort                 | 官方未明文（一说 high）                          | ★medium（常规）、low（批量/CI）、high（架构/重构）           | 值：minimal/low/medium/high/xhigh                     |
+| approval_policy                        | untrusted                               | ★on-request                                  | 可选：untrusted / on-request / never / granular 表      |
+| sandbox_mode                           | read-only（未信任目录）；workspace-write（已信任目录） | ★workspace-write                             | 可选：read-only / workspace-write / danger-full-access |
+| --full-auto                            | 已移除（v0.147.0）                           | 改用 --sandbox workspace-write                 | ★必须改，旧脚本会直接失败                                       |
+| sandbox_workspace_write.network_access | false                                   | 保持 false，装依赖时临时开                             | 忘了开= npm/pip install 卡住                             |
+| approvals_reviewer                     | user                                    | CI 时 auto_review（配合 --approve-for-me）        | auto_review 走自动审查，不打断                               |
+| agents.max_threads                     | 6                                       | 6（保持默认）                                      | 并发线程上限                                              |
+| agents.max_depth                       | 1                                       | 1（别调大）                                       | 调大会反复 fan-out 烧 token                               |
+| agents.job_max_runtime_seconds         | 1800（spawn_agents_on_csv 回退值）           | 1800                                         | 单 worker 超时                                         |
 
 必须改的三项：① 把残留的 --full-auto 换成 --sandbox workspace-write；② approval_policy 从 untrusted 调到 on-request（否则每步都问，一人公司会被打断到崩溃）；③ 按任务分层路由模型（profile），不要统一 high。
 
@@ -1334,12 +1440,12 @@ P0。它是所有其他能力的地基——Goal Mode 的预算、Hooks 的阻�
 
 ### 信息来源
 
-1. OpenAI 官方 sandbox 与 approvals 文档（--full-auto 弃用、approval_policy/sandbox_mode 取值、--ask-for-approval、--approve-for-me、granular）：https://developers.openai.com/codex/sandbox
-2. OpenAI 官方 Advanced Configuration（model_reasoning_effort、approvals_reviewer、granular 表）：https://developers.openai.com/codex/config-advanced
-3. OpenAI 官方 Subagents 文档（agents.max_threads=6 / max_depth=1 / job_max_runtime_seconds=1800、内置 default/worker/explorer）：https://developers.openai.com/codex/subagents
-4. v0.147.0 变更（--full-auto 移除、--approve-for-me 引入）：https://codex.danielvaughan.com/2026/08/10/codex-cli-v0147-portable-agent-plugins-multi-catalog-federation-approve-for-me-conversation-sections
-5. 沙箱默认值推导逻辑（derive_permission_profile、exec 硬编码 approval=never）：https://backgrind.com/blog/codex-cli-sandbox-modes
-6. config 概览与 profile/模型表：https://shipyard.build/blog/codex-cli-cheat-sheet/
+1. OpenAI 官方 sandbox 与 approvals 文档（--full-auto 弃用、approval_policy/sandbox_mode 取值、--ask-for-approval、--approve-for-me、granular）：<https://developers.openai.com/codex/sandbox>
+2. OpenAI 官方 Advanced Configuration（model_reasoning_effort、approvals_reviewer、granular 表）：<https://developers.openai.com/codex/config-advanced>
+3. OpenAI 官方 Subagents 文档（agents.max_threads=6 / max_depth=1 / job_max_runtime_seconds=1800、内置 default/worker/explorer）：<https://developers.openai.com/codex/subagents>
+4. v0.147.0 变更（--full-auto 移除、--approve-for-me 引入）：<https://codex.danielvaughan.com/2026/08/10/codex-cli-v0147-portable-agent-plugins-multi-catalog-federation-approve-for-me-conversation-sections>
+5. 沙箱默认值推导逻辑（derive_permission_profile、exec 硬编码 approval=never）：<https://backgrind.com/blog/codex-cli-sandbox-modes>
+6. config 概览与 profile/模型表：<https://shipyard.build/blog/codex-cli-cheat-sheet/>
 
 ### 待核实
 
@@ -1363,100 +1469,110 @@ Codex 的管控从「粗粒度的 sandbox_mode + approval_policy 二维模型」
 
 【特殊 token】filesystem 规则里 :workspace_roots（工作区根）、:minimal（常用工具最小可读集）、:root、:tmpdir、:slash_tmp 是占位符，让规则跟随环境而非写死绝对路径。
 
-【域白名单语法】domains 表里 "example.com" 精确主机、"*.example.com" 仅子域、"**.example.com" 含 apex、deny 覆盖 allow；本地/私有网络默认阻断（防 DNS rebinding），要访问须显式 allowlist 精确主机或设 allow_local_binding = true。
+【域白名单语法】domains 表里 "example.com" 精确主机、"\*.example.com" 仅子域、"\*\*.example.com" 含 apex、deny 覆盖 allow；本地/私有网络默认阻断（防 DNS rebinding），要访问须显式 allowlist 精确主机或设 allow_local_binding = true。
 
 ### 可直接复制的模板命令配置
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜最小可写、默认断网（一人公司日常推荐）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-default_permissions = "project-edit"
-[permissions.project-edit.filesystem]
-":minimal" = "read"
-[permissions.project-edit.filesystem.":workspace_roots"]
-"." = "write"
-[permissions.project-edit.network]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜最小可写、默认断网（一人公司日常推荐）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+default_permissions = "project-edit"  
+[permissions.project-edit.filesystem]  
+":minimal" = "read"  
+[permissions.project-edit.filesystem.":workspace_roots"]  
+"." = "write"  
+[permissions.project-edit.network]  
 enabled = false
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜域白名单：只放行需要的域名（装依赖/调 API）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-default_permissions = "workspace-net"
-[features]
-network_proxy = true
-[permissions.workspace-net.filesystem]
-":minimal" = "read"
-[permissions.workspace-net.filesystem.":workspace_roots"]
-"." = "write"
-[permissions.workspace-net.network]
-enabled = true
-mode = "limited"          # limited=白名单之外全拒；full=黑名单之外全放
-[permissions.workspace-net.network.domains]
-"api.openai.com" = "allow"
-"registry.npmjs.org" = "allow"
-"api.github.com" = "allow"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜域白名单：只放行需要的域名（装依赖/调 API）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+default_permissions = "workspace-net"  
+[features]  
+network_proxy = true  
+[permissions.workspace-net.filesystem]  
+":minimal" = "read"  
+[permissions.workspace-net.filesystem.":workspace_roots"]  
+"." = "write"  
+[permissions.workspace-net.network]  
+enabled = true  
+mode = "limited"          # limited=白名单之外全拒；full=黑名单之外全放  
+[permissions.workspace-net.network.domains]  
+"api.openai.com" = "allow"  
+"registry.npmjs.org" = "allow"  
+"api.github.com" = "allow"  
 "ads.example.com" = "deny"   # deny 覆盖 allow
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜继承内置基座 + 保护敏感文件】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-default_permissions = "workspace-only"
-[permissions.workspace-only]
-extends = ":workspace"            # 继承内置工作区基座（.git/.codex 自动只读）
-[permissions.workspace-only.filesystem]
-":root" = "deny"                  # 默认拒绝读整个盘
-":minimal" = "read"               # 放行常用工具最小集
-"**/*.env" = "deny"               # 拒绝所有环境文件（glob）
-"**/*.pem" = "deny"
-":tmpdir" = "deny"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜继承内置基座 + 保护敏感文件】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+default_permissions = "workspace-only"  
+[permissions.workspace-only]  
+extends = ":workspace"            # 继承内置工作区基座（.git/.codex 自动只读）  
+[permissions.workspace-only.filesystem]  
+":root" = "deny"                  # 默认拒绝读整个盘  
+":minimal" = "read"               # 放行常用工具最小集  
+"**/*.env" = "deny"               # 拒绝所有环境文件（glob）  
+"**/*.pem" = "deny"  
+":tmpdir" = "deny"  
 ":slash_tmp" = "deny"
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜execpolicy .rules（逐命令管控，可直接抄）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜execpolicy .rules（逐命令管控，可直接抄）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/rules/default.rules
+
 # 只读 git 命令：自动放行
+
 prefix_rule( pattern = ["git", ["status", "diff", "log", "show"]], decision = "allow", justification = "只读 git 操作" )
+
 # git 写入：需确认
+
 prefix_rule( pattern = ["git", ["add", "commit", "merge", "rebase"]], decision = "prompt", justification = "git 写入需审查" )
+
 # 危险操作：禁止
-prefix_rule( pattern = ["git", ["push", "force-push"]], decision = "forbidden", justification = "禁止自动推送" )
-prefix_rule( pattern = ["rm", "-rf"], decision = "forbidden", justification = "禁止递归强删" )
+
+prefix_rule( pattern = ["git", ["push", "force-push"]], decision = "forbidden", justification = "禁止自动推送" )  
+prefix_rule( pattern = ["rm", "-rf"], decision = "forbidden", justification = "禁止递归强删" )  
 prefix_rule( pattern = [["curl", "wget"]], decision = "forbidden", justification = "网络访问走沙箱策略" )
+
 # 常规开发命令：放行
+
 prefix_rule( pattern = [["npm", "pnpm", "yarn"], ["install", "test", "build"]], decision = "allow", justification = "标准包管理操作" )
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜验证规则是否正确匹配】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜验证规则是否正确匹配】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 codex execpolicy check --pretty --rules ~/.codex/rules/default.rules -- git push
+
 # 输出 JSON：matchedRules + decision（forbidden/prompt/allow）
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜列出/查看 profile】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-codex permissions list                    # 列出所有可用 profile
-codex permissions show secure-base        # 看合并后的定义
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜列出/查看 profile】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+codex permissions list                    # 列出所有可用 profile  
+codex permissions show secure-base        # 看合并后的定义  
 codex permissions show secure-base --trace # 标注每条规则来自哪个配置文件哪一行
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| 内置 profiles | :read-only / :workspace / :danger-full-access | :workspace（日常） | 用 extends 继承 |
-| filesystem 访问级别 | 无（按 profile） | workspace 可写、.env/.pem 全局 deny | 优先级 deny > write > read，更具体路径优先 |
-| network.mode | 未启用时断网 | limited（白名单模式） | limited=白名单外全拒；full=黑名单外全放 |
-| network 本地/私有 | 默认阻断 | 保持阻断 | 防 DNS rebinding；需访问显式 allowlist |
-| execpolicy decision | 无（未配置即回落 approval_policy） | 常用命令 allow，危险 forbidden | forbidden > prompt > allow |
-| requirements.toml | 无（企业层） | 一人公司可跳过 | 只能 prompt/forbidden，不能 allow |
-| 与 sandbox_mode 关系 | 二选一 | 选 profiles 体系，别混用 | 官方明示用一套 |
+| 参数                  | 官方默认值                                         | 一人公司推荐值                        | 说明                              |
+| ------------------- | --------------------------------------------- | ------------------------------ | ------------------------------- |
+| 内置 profiles         | :read-only / :workspace / :danger-full-access | :workspace（日常）                 | 用 extends 继承                    |
+| filesystem 访问级别     | 无（按 profile）                                  | workspace 可写、.env/.pem 全局 deny | 优先级 deny > write > read，更具体路径优先 |
+| network.mode        | 未启用时断网                                        | limited（白名单模式）                 | limited=白名单外全拒；full=黑名单外全放      |
+| network 本地/私有       | 默认阻断                                          | 保持阻断                           | 防 DNS rebinding；需访问显式 allowlist |
+| execpolicy decision | 无（未配置即回落 approval_policy）                     | 常用命令 allow，危险 forbidden        | forbidden > prompt > allow      |
+| requirements.toml   | 无（企业层）                                        | 一人公司可跳过                        | 只能 prompt/forbidden，不能 allow    |
+| 与 sandbox_mode 关系   | 二选一                                           | 选 profiles 体系，别混用              | 官方明示用一套                         |
 
-必须改的一项：把敏感文件（.env/.pem/.ssh/**）写成全局 deny 规则。这是无同事 review 时唯一替你兜住「agent 误读密钥文件」的硬闸。
+必须改的一项：把敏感文件（.env/.pem/.ssh/\*\*）写成全局 deny 规则。这是无同事 review 时唯一替你兜住「agent 误读密钥文件」的硬闸。
 
 ### 常见坑
 
 1. 【最大坑】把 permission profiles 和旧 sandbox_mode 混用。官方明示「用一套或另一套，别叠着用」。两套都写会让人误以为「双层更安全」，实际可能冲突或部分被忽略。
-2. 【deny 位置错】把 "**/*.env" = "deny" 写在 profile 顶层，会变成「全局 deny 所有 .env」——通常是对的，但要意识到它不受 :workspace_roots 作用域限制；想只作用域工作区，须包在 [permissions.NAME.filesystem.":workspace_roots"] 子表里。
+2. 【deny 位置错】把 "\*\*/\*.env" = "deny" 写在 profile 顶层，会变成「全局 deny 所有 .env」——通常是对的，但要意识到它不受 :workspace_roots 作用域限制；想只作用域工作区，须包在 [permissions.NAME.filesystem.":workspace_roots"] 子表里。
 3. 【忘记 mode = limited】开了 enabled = true 却不写 domains 白名单，网络行为取决于默认（full 或空），容易变成「本想白名单、实际全放」。
 4. 【本地服务访问被静默阻断】默认阻断 localhost/私有 IP，调试本地 API 时连接神秘失败，得显式 allowlist "localhost" 或设 allow_local_binding。
 5. 【execpolicy 匹配不上】["npm", "test"] 不匹配 npm run test（参数位置不同）。用 codex execpolicy check 验证，用 match/not_match 做载入期断言。
@@ -1492,16 +1608,16 @@ P1。它是安全兜底而非产能杠杆——没有同事 review，它就是�
 
 ### 信息来源
 
-1. OpenAI 官方 Permissions 文档（profile、filesystem/network/domains 语法、:workspace_roots 等特殊 token、local/private 默认阻断）：https://developers.openai.com/codex/permissions
-2. OpenAI 官方 sandbox/approvals 文档（profiles 与旧 sandbox 二选一、审批模式）：https://developers.openai.com/codex/sandbox
-3. OpenAI 官方 Advanced Configuration（granular approval_policy 与 permissions 关系）：https://developers.openai.com/codex/config-advanced
-4. Execution Policy Rules（prefix_rule 语法、forbidden>prompt>allow、host_executable、match/not_match、smart approvals、requirements.toml 优先级）：https://codex.danielvaughan.com/2026/04/16/codex-cli-execution-policy-rules-starlark-command-governance
-5. Permission Profile Inheritance v0.133（extends 继承、list/show --trace）：https://codex.danielvaughan.com/2026/05/22/codex-cli-permission-profile-inheritance-composable-security-policies-v0133
-6. Split Permissions（network.mode limited/full、SOCKS5、shell_environment_policy）：https://codex.danielvaughan.com/2026/04/20/codex-cli-split-permissions-fine-grained-filesystem-network-policies
+1. OpenAI 官方 Permissions 文档（profile、filesystem/network/domains 语法、:workspace_roots 等特殊 token、local/private 默认阻断）：<https://developers.openai.com/codex/permissions>
+2. OpenAI 官方 sandbox/approvals 文档（profiles 与旧 sandbox 二选一、审批模式）：<https://developers.openai.com/codex/sandbox>
+3. OpenAI 官方 Advanced Configuration（granular approval_policy 与 permissions 关系）：<https://developers.openai.com/codex/config-advanced>
+4. Execution Policy Rules（prefix_rule 语法、forbidden>prompt>allow、host_executable、match/not_match、smart approvals、requirements.toml 优先级）：<https://codex.danielvaughan.com/2026/04/16/codex-cli-execution-policy-rules-starlark-command-governance>
+5. Permission Profile Inheritance v0.133（extends 继承、list/show --trace）：<https://codex.danielvaughan.com/2026/05/22/codex-cli-permission-profile-inheritance-composable-security-policies-v0133>
+6. Split Permissions（network.mode limited/full、SOCKS5、shell_environment_policy）：<https://codex.danielvaughan.com/2026/04/20/codex-cli-split-permissions-fine-grained-filesystem-network-policies>
 
 ### 待核实
 
-- deny glob（如 **/*.env）在超大仓库的 glob_scan_max_depth 默认上限值，仅见于单一二手来源 [不确定]
+- deny glob（如 \*\*/\*.env）在超大仓库的 glob_scan_max_depth 默认上限值，仅见于单一二手来源 [不确定]
 - execpolicy 前缀规则的引入版本（v0.126 前后）与 smart approvals 默认开关的精确版本边界未逐一核对 [不确定]
 - network.mode 缺省时（enabled=true 但未写 mode/domains）的确切默认行为，官方未明文 [不确定]
 - permission profiles 与旧 sandbox_mode/approval_policy 的精确兼容与冲突行为（官方只提示「二选一」但未列全冲突矩阵），与 fields.yaml 既有不确定项一致 [不确定]
@@ -1513,6 +1629,7 @@ P1。它是安全兜底而非产能杠杆——没有同事 review，它就是�
 原理：Hooks 是 Codex 的「控制平面」，不是「数据平面」——它在 agent 循环的精确点位注入确定性脚本，以 OS 级进程执行、保证送达，不依赖模型在上下文压力下是否还记得 AGENTS.md 里的自然语言指令。一句话：把「跑测试再交回」从软约定（模型可能忽略）升级成硬执行（exit 2 阻断，模型无法跳过）。
 
 四类钩子的分工：
+
 1. SessionStart——会话启动/恢复/清空/压缩时触发（matcher 过滤 startup|resume|clear|compact）。stdout 会被注入为 developer context，是做「动态上下文注入」的主机制（如注入当天项目状态、注意事项）。
 2. PreToolUse——工具执行前拦截，是唯一「真正阻断」的点。exit 2 阻止该次工具调用（stderr 作为阻止原因）。用于拦截危险命令（rm -rf、force push）、扫描 API key 泄露。
 3. PostToolUse——工具执行后触发。exit 2 会把 stderr 作为反馈「替换工具结果」、迫使模型从 hook 消息处重新考虑（注意：不能撤销已发生的副作用）。用于跑格式化、lint、对刚改的文件做校验。
@@ -1524,179 +1641,196 @@ exit code 完整语义（关键）：0=成功继续；2=阻断/停止（stderr �
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜一人公司最小可用 hooks.json（四类钩子全套）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜一人公司最小可用 hooks.json（四类钩子全套）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 保存为 ~/.codex/hooks.json（全局）或 <repo>/.codex/hooks.json（项目级）
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cat ~/.codex/context/daily-brief.txt",
-            "statusMessage": "注入项目上下文"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.codex/hooks/guard-dangerous.py",
-            "statusMessage": "检查危险命令",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.codex/hooks/post-edit-check.py",
-            "statusMessage": "校验刚改的文件",
-            "timeout": 60
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.codex/hooks/run-tests-or-block.sh",
-            "statusMessage": "跑测试，失败则不许交回",
-            "timeout": 300
-          }
-        ]
-      }
-    ]
-  }
+
+# 保存为 ~/.codex/hooks.json（全局）或 /.codex/hooks.json（项目级）
+
+{  
+"hooks": {  
+"SessionStart": [  
+{  
+"matcher": "startup|resume",  
+"hooks": [  
+{  
+"type": "command",  
+"command": "cat ~/.codex/context/daily-brief.txt",  
+"statusMessage": "注入项目上下文"  
+}  
+]  
+}  
+],  
+"PreToolUse": [  
+{  
+"matcher": "Bash",  
+"hooks": [  
+{  
+"type": "command",  
+"command": "python3 ~/.codex/hooks/guard-dangerous.py",  
+"statusMessage": "检查危险命令",  
+"timeout": 10  
+}  
+]  
+}  
+],  
+"PostToolUse": [  
+{  
+"matcher": "Edit|Write",  
+"hooks": [  
+{  
+"type": "command",  
+"command": "python3 ~/.codex/hooks/post-edit-check.py",  
+"statusMessage": "校验刚改的文件",  
+"timeout": 60  
+}  
+]  
+}  
+],  
+"Stop": [  
+{  
+"hooks": [  
+{  
+"type": "command",  
+"command": "bash ~/.codex/hooks/run-tests-or-block.sh",  
+"statusMessage": "跑测试，失败则不许交回",  
+"timeout": 300  
+}  
+]  
+}  
+]  
+}  
 }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜Stop 钩子：跑测试，失败 exit 2 强制继续（核心脚本）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜Stop 钩子：跑测试，失败 exit 2 强制继续（核心脚本）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 #!/bin/bash
+
 # ~/.codex/hooks/run-tests-or-block.sh
+
 # 语义：exit 0 = 测试通过，允许交回；exit 2 = 测试失败，强制模型继续改
+
 OUTPUT=$(npm test 2>&1)        # 按项目换成 make test / cargo test / pytest 等
-CODE=$?
+CODE=$?  
 if [ $CODE -ne 0 ]; then
   echo "测试未通过，继续修复，不要交回。最近 30 行输出：" >&2
-  echo "$OUTPUT" | tail -30 >&2
-  exit 2
-fi
+  echo "$OUTPUT" | tail -30 >&2  
+exit 2  
+fi  
 exit 0
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜PreToolUse 钩子：拦截危险命令】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜PreToolUse 钩子：拦截危险命令】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 #!/usr/bin/env python3
+
 # ~/.codex/hooks/guard-dangerous.py
-import json, sys
-BLOCK = ["rm -rf /", "git push --force", "git reset --hard", ":(){ :|:& };:"]
-try:
-    evt = json.load(sys.stdin)
-    cmd = evt.get("tool_input", {}).get("command", "")
-except Exception:
-    sys.exit(0)
-for b in BLOCK:
-    if b in cmd:
-        print(f"检测到危险命令：{b}，已阻断。", file=sys.stderr)
-        sys.exit(2)
+
+import json, sys  
+BLOCK = ["rm -rf /", "git push --force", "git reset --hard", ":(){ :|:& };:"]  
+try:  
+evt = json.load(sys.stdin)  
+cmd = evt.get("tool_input", {}).get("command", "")  
+except Exception:  
+sys.exit(0)  
+for b in BLOCK:  
+if b in cmd:  
+print(f"检测到危险命令：{b}，已阻断。", file=sys.stderr)  
+sys.exit(2)  
 sys.exit(0)
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜config.toml 内联写法（等价于上面 hooks.json）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜config.toml 内联写法（等价于上面 hooks.json）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
-[[hooks.Stop]]
-[[hooks.Stop.hooks]]
-type = "command"
-command = "bash ~/.codex/hooks/run-tests-or-block.sh"
-statusMessage = "跑测试，失败则不许交回"
+
+[[hooks.Stop]]  
+[[hooks.Stop.hooks]]  
+type = "command"  
+command = "bash ~/.codex/hooks/run-tests-or-block.sh"  
+statusMessage = "跑测试，失败则不许交回"  
 timeout = 300
 
-[[hooks.PreToolUse]]
-matcher = "Bash"
-[[hooks.PreToolUse.hooks]]
-type = "command"
-command = "python3 ~/.codex/hooks/guard-dangerous.py"
+[[hooks.PreToolUse]]  
+matcher = "Bash"  
+[[hooks.PreToolUse.hooks]]  
+type = "command"  
+command = "python3 ~/.codex/hooks/guard-dangerous.py"  
 timeout = 10
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜v0.148.0 新能力：异步钩子（async）与调用 MCP 工具】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜v0.148.0 新能力：异步钩子（async）与调用 MCP 工具】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 异步钩子：后台跑，不阻塞 agent 循环。注意：async 钩子不能阻断/放行/改写，
+
 # 只能当观察者（审计日志、埋点、通知）。门禁类钩子必须保持同步（不写 async）。
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.codex/hooks/audit-logger.py",
-            "async": true
-          }
-        ]
-      }
-    ]
-  }
+
+{  
+"hooks": {  
+"PostToolUse": [  
+{  
+"matcher": "Bash",  
+"hooks": [  
+{  
+"type": "command",  
+"command": "python3 ~/.codex/hooks/audit-logger.py",  
+"async": true  
+}  
+]  
+}  
+]  
+}  
 }
 
 # 调用 MCP 工具：type 必须为 mcp_tool，server/tool 必填，input 用 ${字段} 展开事件数据
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "mcp_tool",
-            "server": "scanner",
-            "tool": "scan_patch",
-            "input": { "patch": "${tool_input.command}" },
-            "timeout": 30,
-            "statusMessage": "扫描改动"
-          }
-        ]
-      }
-    ]
-  }
+
+{  
+"hooks": {  
+"PostToolUse": [  
+{  
+"matcher": "Write|Edit",  
+"hooks": [  
+{  
+"type": "mcp_tool",  
+"server": "scanner",  
+"tool": "scan_patch",  
+"input": { "patch": "${tool_input.command}" },  
+"timeout": 30,  
+"statusMessage": "扫描改动"  
+}  
+]  
+}  
+]  
+}  
 }
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜审核与信任钩子】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜审核与信任钩子】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 进 TUI 后执行，审核新增/变更的 hook 并信任（信任绑定当前 hash）：
+
 /hooks
+
 # 一次性自动化（已在外部审核过 hook 来源）免信任运行：
+
 codex --dangerously-bypass-hook-trust "跑测试并修复"
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| exit code 语义 | 0=放行 / 2=阻断 / 其他=仅记日志 | 门禁一律 exit 2 | ★必须用 2，写 exit 1 不会阻断 |
-| timeout | 600 秒（SessionEnd 为 1 秒） | Stop 钩子 300、PreToolUse 10、其他 60 | 单位秒，超时会怎样需实测 |
-| async | false | 审计/日志/通知类 true，门禁类保持 false | ★v0.148.0 起支持；async 钩子不能阻断，最多 8 并发 |
-| matcher | 正则，* 或省略=全匹配 | 按需：Bash / Edit\|Write / mcp__xxx | Stop 和 UserPromptSubmit 不支持 matcher |
-| type | command | command（门禁）；mcp_tool（接外部服务） | ★v0.148.0 起支持 mcp_tool |
-| 配置位置 | ~/.codex/hooks.json、~/.codex/config.toml、<repo>/.codex/hooks.json、<repo>/.codex/config.toml | 项目级放 <repo>/.codex/hooks.json（可 git 版本化） | 项目级需该目录被信任才加载 |
-| 信任机制 | 非托管 command hook 需 /hooks 审核信任（绑定 hash） | 首次 /hooks 信任一次，之后变更会重新标记待审 | 变更加入新 hook 后会被跳过直到重新信任 |
-| 启用开关 | 默认启用 | 保持启用 | [features] hooks = false 可整体关闭 |
+| 参数           | 官方默认值                                                                                         | 一人公司推荐值                                  | 说明                                  |
+| ------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------- |
+| exit code 语义 | 0=放行 / 2=阻断 / 其他=仅记日志                                                                         | 门禁一律 exit 2                              | ★必须用 2，写 exit 1 不会阻断                |
+| timeout      | 600 秒（SessionEnd 为 1 秒）                                                                       | Stop 钩子 300、PreToolUse 10、其他 60          | 单位秒，超时会怎样需实测                        |
+| async        | false                                                                                         | 审计/日志/通知类 true，门禁类保持 false               | ★v0.148.0 起支持；async 钩子不能阻断，最多 8 并发  |
+| matcher      | 正则，* 或省略=全匹配                                                                                  | 按需：Bash / Edit|Write / mcp\_\_xxx        | Stop 和 UserPromptSubmit 不支持 matcher |
+| type         | command                                                                                       | command（门禁）；mcp_tool（接外部服务）              | ★v0.148.0 起支持 mcp_tool              |
+| 配置位置         | ~~/.codex/hooks.json、~~/.codex/config.toml、<repo>/.codex/hooks.json、<repo>/.codex/config.toml | 项目级放 <repo>/.codex/hooks.json（可 git 版本化） | 项目级需该目录被信任才加载                       |
+| 信任机制         | 非托管 command hook 需 /hooks 审核信任（绑定 hash）                                                       | 首次 /hooks 信任一次，之后变更会重新标记待审               | 变更加入新 hook 后会被跳过直到重新信任              |
+| 启用开关         | 默认启用                                                                                          | 保持启用                                     | [features] hooks = false 可整体关闭      |
 
 必须改的两项：① 门禁类钩子（Stop 跑测试、PreToolUse 拦危险命令）绝不要加 async:true，否则失去阻断能力；② 阻断必须用 exit 2（或输出 permissionDecision/decision:block JSON），不要误用 exit 1。
 
@@ -1737,10 +1871,10 @@ P0。一人公司没有同事 code review，hooks 是你唯一的「硬」质量
 
 ### 信息来源
 
-1. Codex 官方 Hooks 文档（中文镜像，含完整三层结构、exit code 语义、async/mcp_tool 写法、timeout 默认值）：https://www.codex-docs.com/configuration/hooks/
-2. Codex CLI Hooks GA 完整事件模型与信任机制（v0.133，2026-05-25）：https://codex.danielvaughan.com/2026/05/25/codex-cli-hooks-after-ga-event-model-trust-verification-production-patterns
-3. v0.148.0 发布说明（async hooks + MCP 工具调用）：https://codex.danielvaughan.com/2026/08/19/codex-cli-v0148-release-markdown-export-async-hooks-mcp-cost-visibility-bedrock-runtime-session-fork
-4. v0.148.0 第三方解读（async hooks 语义、最多 8 并发）：https://www.getclaudeskills.com/blog/codex-cli-0-148-0-session-branching-export
+1. Codex 官方 Hooks 文档（中文镜像，含完整三层结构、exit code 语义、async/mcp_tool 写法、timeout 默认值）：<https://www.codex-docs.com/configuration/hooks/>
+2. Codex CLI Hooks GA 完整事件模型与信任机制（v0.133，2026-05-25）：<https://codex.danielvaughan.com/2026/05/25/codex-cli-hooks-after-ga-event-model-trust-verification-production-patterns>
+3. v0.148.0 发布说明（async hooks + MCP 工具调用）：<https://codex.danielvaughan.com/2026/08/19/codex-cli-v0148-release-markdown-export-async-hooks-mcp-cost-visibility-bedrock-runtime-session-fork>
+4. v0.148.0 第三方解读（async hooks 语义、最多 8 并发）：<https://www.getclaudeskills.com/blog/codex-cli-0-148-0-session-branching-export>
 
 ### 待核实
 
@@ -1756,6 +1890,7 @@ P0。一人公司没有同事 code review，hooks 是你唯一的「硬」质量
 验证循环的底层逻辑：一个任务能不能「一次做对、无人盯防」，取决于有没有一个「便宜、确定、机器可判」的 check 把「done」和「not done」分开。没有这个 check，任何自治循环（/goal、codex exec 后台跑）都会要么永远跑、要么过早停。
 
 五部分设计：
+
 1. 测试命令怎么写——永远用仓库里已有的真实命令（make test / npm test / cargo test / pytest），不要让模型自己发明验证方式。把「验证命令」写进派单四要素（子系统/期望行为/验证命令/收尾动作），作为任务的验收标准，而不是事后补充。
 2. 自验证迭代——用 /goal（Ralph Loop：Plan→Act→Test→Review→Iterate）让 agent 自己循环，或手动「最小改动→跑检查→读 diff→失败则带着失败信息重跑」。成功条件写成「闭系统」：目标 + 约束 + 可验证的 success 断言（例如「P95 从 480ms 降到 200ms 以下，新增 benchmark 断言通过」）。
 3. 失败处理策略——限定重试次数（每文件最多 3 次，第 3 次失败就报告并停），禁止「改已通过测试的代码」除非用户明说；失败时带着失败输出重跑，而不是重写整段 prompt。
@@ -1766,40 +1901,54 @@ P0。一人公司没有同事 code review，hooks 是你唯一的「硬」质量
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜派单四要素里的「验证命令」字段（直接抄进任务）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜派单四要素里的「验证命令」字段（直接抄进任务）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ## 子系统
+
 src/auth
+
 ## 期望行为
+
 给登录加 refresh-token 轮换，旧 token 轮换后立即失效。
+
 ## 验证命令
-npm test -- src/auth
+
+npm test -- src/auth  
 npm run typecheck
+
 # 新增：一条断言「轮换后的 token 会使旧 token 失效」
+
 ## 收尾动作
+
 跑完以上命令并保留输出；产出 diff 回执与验证结果。
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜用 /goal 做自治验证循环（Ralph Loop）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜用 /goal 做自治验证循环（Ralph Loop）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml 打开 goals
-[features]
-goals = true
-[goal]
-max_iterations = 40
-auto_mode = true
+
+[features]  
+goals = true  
+[goal]  
+max_iterations = 40  
+auto_mode = true  
 require_tests = true
 
 # 然后在 TUI 里下单（Shift+Tab 进 auto 模式不停顿）：
-/goal 给 auth 加 refresh-token 轮换。
-约束：不改公共 API、不新增依赖。
+
+/goal 给 auth 加 refresh-token 轮换。  
+约束：不改公共 API、不新增依赖。  
 成功：tests/auth 全部通过，且新增断言「轮换后的 token 使旧 token 失效」通过。
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜手动验证循环 checklist（可直接粘贴到任务末尾）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜手动验证循环 checklist（可直接粘贴到任务末尾）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 验证循环 checklist
+
 - [ ] 读取最近的 AGENTS.md 与 AGENTS.override.md
 - [ ] 一句话确认任务范围
 - [ ] 列出涉及的 MCP 连接器及其写边界
@@ -1809,73 +1958,87 @@ require_tests = true
 - [ ] 记录「改了什么 / 验证了什么 / 什么仍需人工 review」
 - [ ] 检查失败时，带着失败信息重跑，而不是重写 prompt
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜失败处理：限重试 + 禁止回改已通过的代码（写进 AGENTS.md）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜失败处理：限重试 + 禁止回改已通过的代码（写进 AGENTS.md）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # AGENTS.md 追加
+
 ## 修复循环规则
+
 1. 不要改动已通过全部测试的代码，除非用户明确要求。
 2. 每次跑测试后，记录「测了哪些文件 + 内容 hash」。
 3. 若某次修改让之前通过的测试变红，先回滚到上一个验证通过的 checkpoint 再修。
 4. 每个文件最多改 3 次；第 3 次仍失败就报告失败并停止，不要无限循环。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜Stop 钩子：测试不过不许交回（回归防护的硬门禁）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜Stop 钩子：测试不过不许交回（回归防护的硬门禁）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 #!/bin/bash
+
 # ~/.codex/hooks/run-tests-or-block.sh
+
 OUTPUT=$(npm test 2>&1)   # 换成你的真实测试命令
-CODE=$?
+CODE=$?  
 if [ $CODE -ne 0 ]; then
   echo "测试未通过，继续修复，不要交回。最近 30 行：" >&2
-  echo "$OUTPUT" | tail -30 >&2
-  exit 2                 # exit 2 = 强制模型继续，不能停下
-fi
+  echo "$OUTPUT" | tail -30 >&2  
+exit 2                 # exit 2 = 强制模型继续，不能停下  
+fi  
 exit 0
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜验证通过打 checkpoint（可回滚）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜验证通过打 checkpoint（可回滚）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 #!/bin/bash
+
 # ~/.codex/hooks/checkpoint-if-passing.sh
-if npm test >/dev/null 2>&1; then
-  git add -A && git stash create "verified-$(date +%s)" 2>/dev/null || \
-  git tag -f verified-latest
-  echo "checkpoint 已打：verified-latest"
-fi
+
+if npm test >/dev/null 2>&1; then  
+git add -A && git stash create "verified-$(date +%s)" 2>/dev/null ||   
+git tag -f verified-latest  
+echo "checkpoint 已打：verified-latest"  
+fi  
 exit 0
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【7｜无测试项目：CI 外部编排（agent 改码，脚手架验证）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【7｜无测试项目：CI 外部编排（agent 改码，脚手架验证）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 让 codex exec 改码，但由外部 CI 跑真实测试
-codex exec \
-  --sandbox workspace-write \
-  "修复 src/parser.rs 的失败测试。不要新建测试文件。
-   用 cargo test 验证你的修复。"
+
+codex exec   
+--sandbox workspace-write   
+"修复 src/parser.rs 的失败测试。不要新建测试文件。  
+用 cargo test 验证你的修复。"
+
 # agent 跑完后，脚手架层独立验证：
+
 cargo test --release 2>&1
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【8｜按模型选择测试策略（省钱 profile）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【8｜按模型选择测试策略（省钱 profile）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/profiles/verify.toml —— 对不爱写测试的模型，强迫只跑已有测试
-[instructions]
-additional = """
-专注改代码，用 `make test` 跑已有测试验证，不要新建测试文件。
+
+[instructions]  
+additional = """  
+专注改代码，用 `make test` 跑已有测试验证，不要新建测试文件。  
 """
+
 # 启动：codex --profile verify "任务"
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| /goal 的 max_iterations | 未明文（noqta 文称 40） | 40（够用即可，别无限） | 自治循环的硬上限，防止无限跑烧钱 |
-| /goal 的 require_tests | false | true | 强制每次迭代跑测试 |
-| /goal 的 auto_mode | false | true（睡前任务） | Shift+Tab 等价，不停顿确认 |
-| 每文件重试上限 | 无默认 | 3 次 | 写进 AGENTS.md，第 3 次失败即报告停止 |
-| Stop 钩子 timeout | 600 秒 | 300 | 测试慢的项目按需加大 |
-| 验证命令 | 无（模型自拟） | 仓库真实命令（npm test/make test/cargo test/pytest） | ★必须显式写进派单，别让模型发明 |
+| 参数                     | 官方默认值            | 一人公司推荐值                                      | 说明                        |
+| ---------------------- | ---------------- | -------------------------------------------- | ------------------------- |
+| /goal 的 max_iterations | 未明文（noqta 文称 40） | 40（够用即可，别无限）                                 | 自治循环的硬上限，防止无限跑烧钱          |
+| /goal 的 require_tests  | false            | true                                         | 强制每次迭代跑测试                 |
+| /goal 的 auto_mode      | false            | true（睡前任务）                                   | Shift+Tab 等价，不停顿确认        |
+| 每文件重试上限                | 无默认              | 3 次                                          | 写进 AGENTS.md，第 3 次失败即报告停止 |
+| Stop 钩子 timeout        | 600 秒            | 300                                          | 测试慢的项目按需加大                |
+| 验证命令                   | 无（模型自拟）          | 仓库真实命令（npm test/make test/cargo test/pytest） | ★必须显式写进派单，别让模型发明          |
 
 必须改的两项：① 在派单里显式写「验证命令」字段，否则模型会自己发明 print 语句式的假验证；② 打开 require_tests（或等效的 Stop 钩子门禁），把「跑测试」从可选项变成硬约束。
 
@@ -1916,10 +2079,10 @@ P0。验证循环是「派单能不能一次做对」和「能不能放心异步
 
 ### 信息来源
 
-1. Codex /goal 的 Ralph Loop 模式与成功条件写法：https://www.noqta.tn/en/blog/codex-goal-command-ralph-loop-autonomous-coding-2026
-2. 修复循环衰减与 typed revision contract（限重试、checkpoint、state-binding hook）：https://codex.danielvaughan.com/2026/07/30/looping-not-reliability-state-bound-evidence-typed-revision-contracts-codex-cli-repair-loop-checkpoint-defence
-3. Agent 生成测试的观察反馈 vs 回归保护（Stop 钩子、profile 分模型）：https://codex.danielvaughan.com/2026/06/23/rethinking-agent-generated-tests-observational-feedback-codex-cli-scaffold-testing-strategy
-4. 验证循环 checklist 与 codex review 工作流：https://www.codexworkshop.com/research/codex-cli-workflows-20260528-0532 与 https://www.codexworkshop.com/research/codex-cli-workflows-20260624-0512
+1. Codex /goal 的 Ralph Loop 模式与成功条件写法：<https://www.noqta.tn/en/blog/codex-goal-command-ralph-loop-autonomous-coding-2026>
+2. 修复循环衰减与 typed revision contract（限重试、checkpoint、state-binding hook）：<https://codex.danielvaughan.com/2026/07/30/looping-not-reliability-state-bound-evidence-typed-revision-contracts-codex-cli-repair-loop-checkpoint-defence>
+3. Agent 生成测试的观察反馈 vs 回归保护（Stop 钩子、profile 分模型）：<https://codex.danielvaughan.com/2026/06/23/rethinking-agent-generated-tests-observational-feedback-codex-cli-scaffold-testing-strategy>
+4. 验证循环 checklist 与 codex review 工作流：<https://www.codexworkshop.com/research/codex-cli-workflows-20260528-0532> 与 <https://www.codexworkshop.com/research/codex-cli-workflows-20260624-0512>
 
 ### 待核实
 
@@ -1935,6 +2098,7 @@ P0。验证循环是「派单能不能一次做对」和「能不能放心异步
 这一环治理两件事：① 长任务里「上下文怎么不爆、不丢关键决策」；② 多任务并行时「线程怎么不混、事后怎么找得回来」。
 
 【auto_compact 压缩】当会话累积 token 逼近上下文窗口时，Codex 会把历史替换成一份「交接摘要」（保留进展、关键决策、约束、待办、续命所需路径/变量），腾出空间继续跑。它是长任务能跑数小时的关键，但本质是 lossy 的——细节会被丢弃或泛化，反复压缩会累积「摘要漂移」，让模型忘记早期决策、已排除的边界情况、三个压缩前读到的精确值。治理要点：
+
 - 用 model_context_window 显式声明窗口大小（不配就用模型默认，gpt-5.3-codex 约 256k、gpt-5.4 约 1M）；
 - 用 model_auto_compact_token_limit 控制「第一次压缩何时触发」，建议设在窗口 75–80%（早压缩比晚压缩更省 prompt cache、漂移更小）；
 - 官方有 90% 硬钳制：effective_limit = min(你配的值, 窗口×0.90)，配再大也没用；
@@ -1950,84 +2114,93 @@ P0。验证循环是「派单能不能一次做对」和「能不能放心异步
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜一人公司压缩配置（config.toml）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜一人公司压缩配置（config.toml）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
-model = "gpt-5.3-codex"
-model_context_window = 256000              # 显式声明窗口（不配用模型默认）
-model_auto_compact_token_limit = 160000    # 约窗口 62%，早压缩省 cache
-model_compact_token_limit = 200000         # 可选：压缩目标水位
+
+model = "gpt-5.3-codex"  
+model_context_window = 256000              # 显式声明窗口（不配用模型默认）  
+model_auto_compact_token_limit = 160000    # 约窗口 62%，早压缩省 cache  
+model_compact_token_limit = 200000         # 可选：压缩目标水位  
 model_reasoning_effort = "medium"
 
 # 长任务专用 profile（更大窗口 + 早压缩）
+
 # ~/.codex/long-task.config.toml
-model_context_window = 256000
+
+model_context_window = 256000  
 model_auto_compact_token_limit = 150000    # 75–80% 区间早压缩
 
 # 单次工具输出封顶（防止一个 cat 大文件打爆 cache 连续性）
+
 tool_output_token_limit = 8000
 
 # 启动：codex --profile long-task "任务"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜会话治理命令速查（TUI 内）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-/new "incident-db-pool"     # 命名新线程（不退出 CLI）
-/clear "feature/auth-refactor"  # 清空并开命名线程
-/rename "新名字"            # 重命名当前会话
-/pin                        # 置顶当前线程（/unpin 取消）
-/resume                     # 从会话列表恢复
-/side  或 /btw              # 开临时侧聊，不污染主线程
-/fork "explore-alt-schema"  # 分叉当前线程试另一种方案
-/fork --temporary "quick"   # 临时分叉（不进列表）
-/export /tmp/review.md      # 导出完整对话为 Markdown
-/compact                    # 手动压缩，立即释放上下文
-/status                     # 看模型/权限/可写根/token/成本/会话详情
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜会话治理命令速查（TUI 内）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+/new "incident-db-pool"     # 命名新线程（不退出 CLI）  
+/clear "feature/auth-refactor"  # 清空并开命名线程  
+/rename "新名字"            # 重命名当前会话  
+/pin                        # 置顶当前线程（/unpin 取消）  
+/resume                     # 从会话列表恢复  
+/side  或 /btw              # 开临时侧聊，不污染主线程  
+/fork "explore-alt-schema"  # 分叉当前线程试另一种方案  
+/fork --temporary "quick"   # 临时分叉（不进列表）  
+/export /tmp/review.md      # 导出完整对话为 Markdown  
+/compact                    # 手动压缩，立即释放上下文  
+/status                     # 看模型/权限/可写根/token/成本/会话详情  
 /usage                      # 看 token 活动、速率限制、可用额度
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜会话治理配置（[session]）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜会话治理配置（[session]）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
-[session]
-auto_name = true        # 按首条 prompt 自动命名（默认 false）
-max_pinned = 10         # 置顶线程上限（默认 10）
+
+[session]  
+auto_name = true        # 按首条 prompt 自动命名（默认 false）  
+max_pinned = 10         # 置顶线程上限（默认 10）  
 persist_sides = true    # 侧聊跨重启持久化（默认 true）
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜CLI 级会话管理（终端里）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-codex resume                # 恢复最近一次会话
-codex resume <id>           # 按 ID 恢复
-codex fork                  # 分叉当前会话（保留历史）
-codex exec fork             # 从当前状态分叉（v0.148.0）
-codex archive <id|name>     # 归档会话
-codex unarchive <id|name>   # 恢复归档
-codex delete <id|name>      # 永久删除
-codex queue "跟进指令"      # 给正在跑的无头会话发消息（v0.149.0）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜CLI 级会话管理（终端里）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+codex resume                # 恢复最近一次会话  
+codex resume <id>           # 按 ID 恢复  
+codex fork                  # 分叉当前会话（保留历史）  
+codex exec fork             # 从当前状态分叉（v0.148.0）  
+codex archive <id|name>     # 归档会话  
+codex unarchive <id|name>   # 恢复归档  
+codex delete <id|name>      # 永久删除  
+codex queue "跟进指令"      # 给正在跑的无头会话发消息（v0.149.0）  
 codex agents                # 交互式任务看板（v0.149.0）
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜长任务防失忆：把关键决策落到文件而非依赖记忆】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜长任务防失忆：把关键决策落到文件而非依赖记忆】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 睡前下单模板：要求 agent 把决策写进文件，压缩也不丢
-「重构 auth 模块。把每个关键决策、已排除的方案、
-  精确到值的约定写入 DECISIONS.md，随代码一起提交。
-  收尾跑 npm test 并 /export 一份 transcript 到 results/。」
+
+「重构 auth 模块。把每个关键决策、已排除的方案、  
+精确到值的约定写入 DECISIONS.md，随代码一起提交。  
+收尾跑 npm test 并 /export 一份 transcript 到 results/。」
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| model_context_window | 模型默认（gpt-5.3-codex 约 256k，gpt-5.4 约 1M） | 日常不配；长任务显式 256000 | 显式声明窗口大小 |
-| model_auto_compact_token_limit | 官方未明文（多来源：32000 / 200000 / 模型窗口×90%） | ★150000–160000（窗口 60–75%） | 第一次压缩触发阈值，90% 硬钳制 |
-| tool_output_token_limit | unset（不限） | ★8000–12000 | 单次工具输出封顶，防止大文件打爆 cache |
-| [session].auto_name | false | true | 按首 prompt 自动命名线程 |
-| [session].max_pinned | 10 | 10 | 置顶线程上限 |
-| [session].persist_sides | true | true | 侧聊跨重启持久化 |
-| /new 命名 | 无（v0.146.0 前为匿名 thread ID） | ★始终命名 | 命名持久化、可检索 |
-| /export | 无（v0.148.0 新增） | 长任务收尾必做 | 导出 Markdown 到剪贴板/文件 |
+| 参数                             | 官方默认值                                   | 一人公司推荐值                   | 说明                     |
+| ------------------------------ | --------------------------------------- | ------------------------- | ---------------------- |
+| model_context_window           | 模型默认（gpt-5.3-codex 约 256k，gpt-5.4 约 1M） | 日常不配；长任务显式 256000         | 显式声明窗口大小               |
+| model_auto_compact_token_limit | 官方未明文（多来源：32000 / 200000 / 模型窗口×90%）    | ★150000–160000（窗口 60–75%） | 第一次压缩触发阈值，90% 硬钳制      |
+| tool_output_token_limit        | unset（不限）                               | ★8000–12000               | 单次工具输出封顶，防止大文件打爆 cache |
+| [session].auto_name            | false                                   | true                      | 按首 prompt 自动命名线程       |
+| [session].max_pinned           | 10                                      | 10                        | 置顶线程上限                 |
+| [session].persist_sides        | true                                    | true                      | 侧聊跨重启持久化               |
+| /new 命名                        | 无（v0.146.0 前为匿名 thread ID）              | ★始终命名                     | 命名持久化、可检索              |
+| /export                        | 无（v0.148.0 新增）                          | 长任务收尾必做                   | 导出 Markdown 到剪贴板/文件    |
 
 必须改的两项：① 显式设 model_auto_compact_token_limit（别用默认——默认要么太小频繁压缩、要么逼近窗口才压导致溢出）；② tool_output_token_limit 从「不限」降到 8000–12000，这是最便宜的抗失忆 + 省 cache 开关。
 
@@ -2069,12 +2242,12 @@ P1。上下文治理决定「异步长任务能不能放心过夜」——漏配
 
 ### 信息来源
 
-1. Codex CLI v0.146 会话管理（命名会话、线程置顶、侧聊切换）：https://codex.danielvaughan.com/2026/07/29/codex-cli-v0146-session-management-named-sessions-thread-pinning-side-conversations-forking
-2. 上下文压缩调优（90% 钳制、每模型默认、tool_output_token_limit）：https://codex.danielvaughan.com/2026/04/16/codex-cli-context-compaction-tuning-long-sessions
-3. TokenPilot 与 prompt cache（tool_output_token_limit 作为摄入门、早压缩策略）：https://codex.danielvaughan.com/2026/07/03/tokenpilot-cache-efficient-context-management-codex-cli-prompt-cache-compaction-eviction-cost
-4. 1M 上下文窗口与 OpenAI 默认调小的原因：https://www.explainx.ai/blog/enable-1m-token-context-window-codex-cli-gpt-5-6-sol-august-2026
-5. v0.148/0.149 会话导出与任务看板：https://vibecodedthis.com/blog/codex-cli-0148-0149-session-fork-agents-dashboard-august-2026
-6. Codex 命令速查（/new /export /side /pin 等）：https://www.scriptbyai.com/codex-commands-cheat-sheet/
+1. Codex CLI v0.146 会话管理（命名会话、线程置顶、侧聊切换）：<https://codex.danielvaughan.com/2026/07/29/codex-cli-v0146-session-management-named-sessions-thread-pinning-side-conversations-forking>
+2. 上下文压缩调优（90% 钳制、每模型默认、tool_output_token_limit）：<https://codex.danielvaughan.com/2026/04/16/codex-cli-context-compaction-tuning-long-sessions>
+3. TokenPilot 与 prompt cache（tool_output_token_limit 作为摄入门、早压缩策略）：<https://codex.danielvaughan.com/2026/07/03/tokenpilot-cache-efficient-context-management-codex-cli-prompt-cache-compaction-eviction-cost>
+4. 1M 上下文窗口与 OpenAI 默认调小的原因：<https://www.explainx.ai/blog/enable-1m-token-context-window-codex-cli-gpt-5-6-sol-august-2026>
+5. v0.148/0.149 会话导出与任务看板：<https://vibecodedthis.com/blog/codex-cli-0148-0149-session-fork-agents-dashboard-august-2026>
+6. Codex 命令速查（/new /export /side /pin 等）：<https://www.scriptbyai.com/codex-commands-cheat-sheet/>
 
 ### 待核实
 
@@ -2092,9 +2265,9 @@ Codex 自 2026-04-02 起从「按消息计数」改为「token 额度（credit�
 
 【换算】1 credit ≈ $0.04（经交叉验证：官方费率卡 GPT-5.3-Codex = 43.75 credits/1M 输入，43.75×0.04=$1.75，与 API 侧 $1.75/M 输入完全吻合）。费率按每百万 token 三档计费：输入 / 缓存输入 / 输出。当前 GPT-5.6 家族：Sol（前沿）约 100/500 credits/1M（输入/输出）、Luna（廉价快速）约 5/30；缓存输入约是普通输入的 1/10，是最大的省钱杠杆。上一代 GPT-5.5 参考费率 125/12.50/750（缓存 12.50 ≈ 输入 1/10）。
 
-【三个查看入口分工】
-① /status 看「当前会话」：活动模型、审批策略、可写根、剩余上下文；v0.148+ 额外显示本线程累计估算成本（如 Thread cost: ~$0.47）。
-② /usage 看「账户级」：日/周/累计 token 活动菜单，也是兑换「限速重置」的地方。
+【三个查看入口分工】  
+① /status 看「当前会话」：活动模型、审批策略、可写根、剩余上下文；v0.148+ 额外显示本线程累计估算成本（如 Thread cost: ~$0.47）。  
+② /usage 看「账户级」：日/周/累计 token 活动菜单，也是兑换「限速重置」的地方。  
 ③ /statusline 看「常驻」：TUI 底部状态栏，把限速、token 计数、上下文占用、成本估算永久钉住，持久化到 config.toml 的 tui.status_line。
 
 【CI 计量】用 codex exec --json 抓事件流，token_count 事件携带累计 input/cached/output/reasoning 四项 token 数，把相邻两次差值累加即可得到单次运行消耗；turn.completed 事件也带完整 usage 对象。这是无人值守计量的唯一可靠入口。
@@ -2103,61 +2276,73 @@ Codex 自 2026-04-02 起从「按消息计数」改为「token 额度（credit�
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜会话内查看消耗（三个命令各司其职）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜会话内查看消耗（三个命令各司其职）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # TUI 内输入：
-/status        # 当前会话：模型/审批/可写根/剩余上下文 + v0.148 起估算成本
-/usage         # 账户级：日/周/累计 token 活动，兑换限速重置
+
+/status        # 当前会话：模型/审批/可写根/剩余上下文 + v0.148 起估算成本  
+/usage         # 账户级：日/周/累计 token 活动，兑换限速重置  
 /statusline    # 切换底部常驻状态栏
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜CI 计量：抓 token_count 事件算消耗】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜CI 计量：抓 token_count 事件算消耗】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 抓累计 token 事件（input/cached/output/reasoning 四项）
-codex exec --json "重构 auth 模块" 2>/dev/null \
-  | jq -c 'select(.payload.type == "token_count") | .payload'
+
+codex exec --json "重构 auth 模块" 2>/dev/null   
+| jq -c 'select(.payload.type == "token_count") | .payload'
 
 # 抓 turn 结束时的 usage 对象（含 reasoning_tokens，v0.125 起）
-codex exec --json "重构 auth 模块" 2>/dev/null \
-  | jq 'select(.type == "turn.completed") | .usage'
+
+codex exec --json "重构 auth 模块" 2>/dev/null   
+| jq 'select(.type == "turn.completed") | .usage'
 
 # 累加一次运行的总输出 token（差值法示例）
-codex exec --json "跑测试并修复失败" 2>/dev/null \
-  | jq -s '[.[] | select(.payload.type == "token_count") | .payload.output_tokens]
-          | last'
 
+codex exec --json "跑测试并修复失败" 2>/dev/null   
+| jq -s '[.[] | select(.payload.type == "token_count") | .payload.output_tokens]  
+| last'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜状态栏常驻（config.toml 持久化）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜状态栏常驻（config.toml 持久化）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
+
 tui.status_line = "context, model, cost"   # 钉住上下文占用/模型/成本估算
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜睡前下单前的额度体检（一行脚本）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜睡前下单前的额度体检（一行脚本）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 非交互模式也能拿到限速信息，跑长任务前先体检
-codex exec --json "报告你当前会话的剩余上下文，不要改任何文件" 2>/dev/null \
-  | jq -r 'select(.payload.type == "token_count") | .payload' | tail -1
 
+# 非交互模式也能拿到限速信息，跑长任务前先体检
+
+codex exec --json "报告你当前会话的剩余上下文，不要改任何文件" 2>/dev/null   
+| jq -r 'select(.payload.type == "token_count") | .payload' | tail -1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜credit→美元 换算速查（jq 或心算）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜credit→美元 换算速查（jq 或心算）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 1 credit ≈ $0.04；例：Sol 100 credits/1M 输入 = $4/M 输入
+
 # 输出 token 比输入贵约 5 倍（Sol 500/100），省钱先砍输出+启用缓存输入
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| 计费单位 | credit（1 credit ≈ $0.04） | 同左，换算进 CI 报表 | 2026-04-02 起按 token 计 credit |
-| 计费窗口 | 滚动 5 小时窗口 + 周配额（并行） | 睡前下单前两者都查 | Plus 自 2026-08-26 恢复 5 小时窗口 |
-| 模型（成本主变量） | GPT-5.6 Sol 前沿默认 | ★按任务分层：探索/批量用 Luna，架构/重构用 Sol | 模型选择比 prompt 长度影响大得多 |
-| model_reasoning_effort | 官方未明文 | ★常规 medium、CI/批量 low | 推理 token 计费但不出现在可见输出，1x~3x 放大 |
-| tui.status_line | 未配置（无状态栏） | ★"context, model, cost" | 常驻成本/上下文，成本敏感必开 |
-| codex exec --json | 默认人读输出 | ★--json（CI 计量唯一入口） | token_count / turn.completed 事件 |
-| MCP 服务器数量 | 不限 | ★按需开关，用完禁用 | 每台 MCP 每轮注入 schema，一个 GitHub MCP 可多 ~55k token/轮 |
-| 缓存输入 | 自动 | ★保持 AGENTS.md 精简以复用缓存 | 缓存输入约 1/10 价 |
+| 参数                     | 官方默认值                    | 一人公司推荐值                       | 说明                                               |
+| ---------------------- | ------------------------ | ----------------------------- | ------------------------------------------------ |
+| 计费单位                   | credit（1 credit ≈ $0.04） | 同左，换算进 CI 报表                  | 2026-04-02 起按 token 计 credit                     |
+| 计费窗口                   | 滚动 5 小时窗口 + 周配额（并行）      | 睡前下单前两者都查                     | Plus 自 2026-08-26 恢复 5 小时窗口                      |
+| 模型（成本主变量）              | GPT-5.6 Sol 前沿默认         | ★按任务分层：探索/批量用 Luna，架构/重构用 Sol | 模型选择比 prompt 长度影响大得多                             |
+| model_reasoning_effort | 官方未明文                    | ★常规 medium、CI/批量 low          | 推理 token 计费但不出现在可见输出，1x~3x 放大                    |
+| tui.status_line        | 未配置（无状态栏）                | ★"context, model, cost"       | 常驻成本/上下文，成本敏感必开                                  |
+| codex exec --json      | 默认人读输出                   | ★--json（CI 计量唯一入口）            | token_count / turn.completed 事件                  |
+| MCP 服务器数量              | 不限                       | ★按需开关，用完禁用                    | 每台 MCP 每轮注入 schema，一个 GitHub MCP 可多 ~55k token/轮 |
+| 缓存输入                   | 自动                       | ★保持 AGENTS.md 精简以复用缓存         | 缓存输入约 1/10 价                                     |
 
 必须改的两项：① tui.status_line 显式开启成本/上下文常驻（默认关着，成本敏感用户等于盲开）；② 按任务把模型和 reasoning_effort 分层，而不是全程 Sol+high。
 
@@ -2168,6 +2353,8 @@ codex exec --json "报告你当前会话的剩余上下文，不要改任何文�
 3. 【图像生成 3-5 倍消耗】Codex 内启动的图像生成计入同一额度，且消耗是普通轮次的 3-5 倍；用完额度后还继续从 credit 扣。ChatGPT 侧的图片配额与 Codex 无关，别把 ChatGPT 的「50 张/天」横幅当成 Codex 额度。
 4. 【MCP 税】每台 MCP 每轮注入完整 tool schema，线性叠加。GitHub+Slack+Jira+DB 四台同开可加 ~10 万 token/轮的 schema 开销。用完就 disable。
 5. 【推理 token 不可见但计费】reasoning token 不计入你看到的输出，但按输出费率计费。medium 可让有效 token 翻倍，high/xhigh 三倍。
+
+
 6. 【上下文累积 + 压缩螺旋】context 超 80%（model_auto_compact_token_limit 默认）触发自动压缩，压缩本身又烧 token；长会话会陷入「长上下文→压缩→更长」螺旋。
 7. 【JSON 事件封装结构随版本变】token_count 事件的字段路径在不同版本有 .type 与 .payload.type 两种写法，jq 脚本要按你实际版本实测，别照抄旧博客。
 8. 【登录态决定费率表】ChatGPT 登录态按 credit 计（受 5 小时窗口），API key 按 API token 计费（无窗口限制）。同一模型两条路径费率与限额完全不同，别混算。
@@ -2199,12 +2386,12 @@ P0。成本敏感是一人公司的硬约束，而额度可视化是所有省钱
 
 ### 信息来源
 
-1. OpenAI 官方 Pricing（credit 费率卡、5 小时窗口、credits 说明）：https://developers.openai.com/codex/pricing
-2. OpenAI 官方 Changelog（v0.125 reasoning 上报、v0.148 成本可见性）：https://developers.openai.com/codex/changelog
-3. v0.148.0 成本可见性详解：https://codex.danielvaughan.com/2026/08/19/codex-cli-v0148-release-markdown-export-async-hooks-mcp-cost-visibility-bedrock-runtime-session-fork
-4. token 消耗诊断与 token_count 事件：https://codex.danielvaughan.com/2026/06/10/codex-cli-token-consumption-diagnosis-reduction-quota-drain-practitioner-toolkit
-5. 登录态两套计费与模型访问差异：https://codex.danielvaughan.com/2026/06/13/codex-cli-authentication-paths-chatgpt-login-api-key-billing-rate-limits-model-access
-6. Plus 5 小时窗口恢复（2026-08-26）：https://www.ithinkdiff.com/openai-codex-five-hour-limit
+1. OpenAI 官方 Pricing（credit 费率卡、5 小时窗口、credits 说明）：<https://developers.openai.com/codex/pricing>
+2. OpenAI 官方 Changelog（v0.125 reasoning 上报、v0.148 成本可见性）：<https://developers.openai.com/codex/changelog>
+3. v0.148.0 成本可见性详解：<https://codex.danielvaughan.com/2026/08/19/codex-cli-v0148-release-markdown-export-async-hooks-mcp-cost-visibility-bedrock-runtime-session-fork>
+4. token 消耗诊断与 token_count 事件：<https://codex.danielvaughan.com/2026/06/10/codex-cli-token-consumption-diagnosis-reduction-quota-drain-practitioner-toolkit>
+5. 登录态两套计费与模型访问差异：<https://codex.danielvaughan.com/2026/06/13/codex-cli-authentication-paths-chatgpt-login-api-key-billing-rate-limits-model-access>
+6. Plus 5 小时窗口恢复（2026-08-26）：<https://www.ithinkdiff.com/openai-codex-five-hour-limit>
 
 ### 待核实
 
@@ -2220,7 +2407,7 @@ P0。成本敏感是一人公司的硬约束，而额度可视化是所有省钱
 
 单个 agent 会撞三堵墙：上下文过载、无分工、无协调。Codex 的 Subagent 工作流用「主 agent 拆分+协调+汇总，子 agent 在独立线程干一件边界明确的事」来解决——探索、审查、测试、文档核验等独立子任务并行跑，最后只把提炼结果（证据/结论/风险/文件位置）交回主线程，把噪声中间输出挡在主线程之外。
 
-【何时该拆（读密集优先）】适合并行：代码库探索、PR 多维审查、测试/日志分析、文档检索、依赖核验、风险分类、多方案比较——特征是「子任务独立 + 结果可结构化汇总 + 不争抢同一批文件」。
+【何时该拆（读密集优先）】适合并行：代码库探索、PR 多维审查、测试/日志分析、文档检索、依赖核验、风险分类、多方案比较——特征是「子任务独立 + 结果可结构化汇总 + 不争抢同一批文件」。  
 【何时不该拆（写密集慎用）】多个 agent 同时改同一文件/公共接口、任务有严格前后依赖、需求未明、范围很小、需共享大量中间态——并行会制造冲突和协调开销，得不偿失。稳妥流程是「并行探索/审查 → 主 agent 定方案 → 只让一个 worker 改 → 再并行验证」。
 
 【怎么拆 + 分档省钱开关】核心省钱逻辑：explorer 用便宜模型、worker/reviewer 用贵模型。Codex 内置三个 agent：default（通用后备）、worker（执行/修复）、explorer（只读探索）。自定义 agent 是独立 TOML 文件（~/.codex/agents/ 个人级、.codex/agents/ 项目级），每个文件可单独 pin model 和 model_reasoning_effort——这就是「explorer 用 gpt-5.6-terra/luna 便宜读、worker 用 gpt-5.6-sol 贵写、reviewer 用 gpt-5.6-sol 高推理把关」的落地开关。
@@ -2229,71 +2416,78 @@ P0。成本敏感是一人公司的硬约束，而额度可视化是所有省钱
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜全局并发上限（config.toml）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜全局并发上限（config.toml）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml 或 项目 .codex/config.toml
-[agents]
-max_threads = 6        # 并发线程上限，官方默认 6
+
+[agents]  
+max_threads = 6        # 并发线程上限，官方默认 6  
 max_depth = 1          # 嵌套深度，官方默认 1，别调大
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜自定义 agent 分档（explorer 便宜 / worker 贵）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜自定义 agent 分档（explorer 便宜 / worker 贵）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # .codex/agents/explorer.toml —— 便宜模型只读探索
-name = "explorer"
-description = "只读代码库探索，定位相关文件、梳理调用链、收集证据"
-developer_instructions = "保持探索态，追踪真实执行路径，引用文件与符号，不要提修复建议，优先精确搜索而非广扫。"
-model = "gpt-5.6-terra"          # 便宜中档，够用
-model_reasoning_effort = "low"
+
+name = "explorer"  
+description = "只读代码库探索，定位相关文件、梳理调用链、收集证据"  
+developer_instructions = "保持探索态，追踪真实执行路径，引用文件与符号，不要提修复建议，优先精确搜索而非广扫。"  
+model = "gpt-5.6-terra"          # 便宜中档，够用  
+model_reasoning_effort = "low"  
 sandbox_mode = "read-only"
 
 # .codex/agents/implementer.toml —— 贵模型执行修改
-name = "implementer"
-description = "实现功能、修复 bug、更新测试"
-developer_instructions = "只改明确指派给你的文件，不要回退/覆盖他人改动，改动保持机械且小，最终列出改动文件与验证结果。"
-model = "gpt-5.6-sol"            # 前沿模型，写的质量是命
+
+name = "implementer"  
+description = "实现功能、修复 bug、更新测试"  
+developer_instructions = "只改明确指派给你的文件，不要回退/覆盖他人改动，改动保持机械且小，最终列出改动文件与验证结果。"  
+model = "gpt-5.6-sol"            # 前沿模型，写的质量是命  
 model_reasoning_effort = "high"
 
 # .codex/agents/reviewer.toml —— 贵模型高推理把关
-name = "reviewer"
-description = "审查代码正确性、安全、测试缺口"
-developer_instructions = "像 owner 一样审查：优先正确性、安全、行为回归、缺失测试；不评论风格。"
-model = "gpt-5.6-sol"
-model_reasoning_effort = "high"
+
+name = "reviewer"  
+description = "审查代码正确性、安全、测试缺口"  
+developer_instructions = "像 owner 一样审查：优先正确性、安全、行为回归、缺失测试；不评论风格。"  
+model = "gpt-5.6-sol"  
+model_reasoning_effort = "high"  
 sandbox_mode = "read-only"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜触发并行审查（一句话提示词）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜触发并行审查（一句话提示词）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 请审查当前分支相对 main 的改动。启动三个并行只读 Subagent：
+
 1. security_reviewer —— 检查认证、授权、输入验证、敏感信息风险
 2. test_reviewer —— 检查测试缺口、边界条件、潜在不稳定测试
-3. maintainability_reviewer —— 检查复杂度、重复代码、长期维护风险
-等待全部完成后，按严重程度汇总问题，每项给文件路径、代码位置、原因、建议。
+3. maintainability_reviewer —— 检查复杂度、重复代码、长期维护风险  
+   等待全部完成后，按严重程度汇总问题，每项给文件路径、代码位置、原因、建议。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜串行编排（先探索后动手，避免写冲突）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-先启动 explorer 和 docs_researcher 并行。等两者完成后，由主线程判断根因。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜串行编排（先探索后动手，避免写冲突）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+先启动 explorer 和 docs_researcher 并行。等两者完成后，由主线程判断根因。  
 根因明确后，只启动一个 worker 修改。修改完成后，再并行启动 reviewer 和 test_agent 验证。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜CLI 管理线程】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜CLI 管理线程】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 /agent   # 查看/切换活动或已完成的 agent 线程；审批弹窗里按 o 打开来源线程
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| agents.max_threads | 6 | 3-6（读密集审查 3 起步，别一上来 6） | 并发线程上限 |
-| agents.max_depth | 1 | 1（★别调大） | 调大会反复 fan-out 烧 token/延迟/资源 |
-| agents.job_max_runtime_seconds | 1800（spawn_agents_on_csv 回退值） | 1800 | 单 worker 超时 |
-| agents.interrupt_message | true | true | 中断时给模型留可见提示 |
-| 自定义 agent model | 继承父会话 | ★explorer→gpt-5.6-terra/luna，worker/reviewer→gpt-5.6-sol | 分档省钱的核心开关 |
-| 自定义 agent model_reasoning_effort | 继承父会话 | ★explorer low，worker/reviewer high | 与 model 配对 |
-| sandbox_mode（per agent） | 继承父会话 | explorer/reviewer read-only，worker workspace-write | 只读 agent 绝不写 |
+| 参数                               | 官方默认值                         | 一人公司推荐值                                                  | 说明                          |
+| -------------------------------- | ----------------------------- | -------------------------------------------------------- | --------------------------- |
+| agents.max_threads               | 6                             | 3-6（读密集审查 3 起步，别一上来 6）                                   | 并发线程上限                      |
+| agents.max_depth                 | 1                             | 1（★别调大）                                                  | 调大会反复 fan-out 烧 token/延迟/资源 |
+| agents.job_max_runtime_seconds   | 1800（spawn_agents_on_csv 回退值） | 1800                                                     | 单 worker 超时                 |
+| agents.interrupt_message         | true                          | true                                                     | 中断时给模型留可见提示                 |
+| 自定义 agent model                  | 继承父会话                         | ★explorer→gpt-5.6-terra/luna，worker/reviewer→gpt-5.6-sol | 分档省钱的核心开关                   |
+| 自定义 agent model_reasoning_effort | 继承父会话                         | ★explorer low，worker/reviewer high                       | 与 model 配对                  |
+| sandbox_mode（per agent）          | 继承父会话                         | explorer/reviewer read-only，worker workspace-write       | 只读 agent 绝不写                |
 
 必须改的一项：给 explorer 单独 pin 便宜模型 + read-only。否则探索这种最吃 token 的活儿默认走贵模型，钱全烧在「读代码」上。
 
@@ -2335,11 +2529,11 @@ P1。并行审查是「无同事 review」的最直接替代品——用 securit
 
 ### 信息来源
 
-1. OpenAI 官方 Subagents（内置 default/worker/explorer、max_threads=6/max_depth=1/job_max_runtime_seconds=1800、自定义 agent 字段 schema）：https://developers.openai.com/codex/subagents
-2. ChatGPT Learn Subagents（模型选择建议 gpt-5.6/terra、读密集优先、写密集慎用）：https://learn.chatgpt.com/docs/agent-configuration/subagents
-3. 官方 best-practice 转译（PR 三 agent 审查模式、model 分档示例）：https://github.com/shanraisshan/codex-cli-best-practice/blob/main/best-practice/codex-subagents.md
-4. 多模型路由分档（explorer gpt-5.4-mini / implementer gpt-5.4 / reviewer gpt-5.5 层级）：https://codex.danielvaughan.com/2026/06/07/codex-cli-multi-model-daily-workflows-gpt55-spark-mini-open-weight-cost-quality-routing
-5. 本地 Ollama 当便宜 subagent（explorer/worker 分档省主模型 context）：https://rjv.im/blog/solution/codex-local-ollama-subagents
+1. OpenAI 官方 Subagents（内置 default/worker/explorer、max_threads=6/max_depth=1/job_max_runtime_seconds=1800、自定义 agent 字段 schema）：<https://developers.openai.com/codex/subagents>
+2. ChatGPT Learn Subagents（模型选择建议 gpt-5.6/terra、读密集优先、写密集慎用）：<https://learn.chatgpt.com/docs/agent-configuration/subagents>
+3. 官方 best-practice 转译（PR 三 agent 审查模式、model 分档示例）：<https://github.com/shanraisshan/codex-cli-best-practice/blob/main/best-practice/codex-subagents.md>
+4. 多模型路由分档（explorer gpt-5.4-mini / implementer gpt-5.4 / reviewer gpt-5.5 层级）：<https://codex.danielvaughan.com/2026/06/07/codex-cli-multi-model-daily-workflows-gpt55-spark-mini-open-weight-cost-quality-routing>
+5. 本地 Ollama 当便宜 subagent（explorer/worker 分档省主模型 context）：<https://rjv.im/blog/solution/codex-local-ollama-subagents>
 
 ### 待核实
 
@@ -2354,66 +2548,77 @@ P1。并行审查是「无同事 review」的最直接替代品——用 securit
 
 OpenAI 的模型弃用分两档：「Deprecated」（宣布即开始倒计时，模型仍可用）与「Shut down」（请求不再解析、直接报错）。Codex 侧以周为单位迭代，两周前的建议就可能失效，一人公司必须把「模型 ID 排查」变成可重复执行的脚本，而不是靠记性。
 
-【2026 年两波关键下线】
-① 2026-07-23（已执行）：一次性下线 Codex 系列——gpt-5-codex、gpt-5.1-codex、gpt-5.1-codex-max、gpt-5.1-codex-mini、gpt-5.2-codex，替代为 gpt-5.6-sol（其中 gpt-5.1-codex-mini 映射到 gpt-5.6-terra）。同波还下线 gpt-5-chat-latest、gpt-5.1-chat-latest、computer-use-preview、o3-deep-research、o4-mini-deep-research。
+【2026 年两波关键下线】  
+① 2026-07-23（已执行）：一次性下线 Codex 系列——gpt-5-codex、gpt-5.1-codex、gpt-5.1-codex-max、gpt-5.1-codex-mini、gpt-5.2-codex，替代为 gpt-5.6-sol（其中 gpt-5.1-codex-mini 映射到 gpt-5.6-terra）。同波还下线 gpt-5-chat-latest、gpt-5.1-chat-latest、computer-use-preview、o3-deep-research、o4-mini-deep-research。  
 ② 2026-08-31（当前最紧）：gpt-5.4 与 gpt-5.4-mini 从 Codex 的 ChatGPT 登录态下线，迁往 gpt-5.6-terra / gpt-5.6-luna。注意：这只影响 ChatGPT 登录态，API key 不受影响。同时 gpt-5.2、gpt-5.3-codex 也已对 ChatGPT 登录态弃用。
 
-【ChatGPT 登录态 vs API key 的关键差异】
+【ChatGPT 登录态 vs API key 的关键差异】  
 两条认证路径走完全不同的后端与计费：ChatGPT 登录态走本地代理→chatgpt.com/backend-api/codex/responses，按订阅 credit 计费（5 小时窗口+周配额），但享受「新模型首发、Cloud/Fast mode、Spark」等订阅能力；API key 直连 api.openai.com/v1/responses，按 token 计费（无窗口限制），但拿新模型有延迟、无 Cloud/Fast mode、可接第三方 provider。关键推论：登录态的模型弃用（如 gpt-5.4）不影响 API key 用户，反之 API key 侧的弃用（如 gpt-5.2 系列 2026-06-30 API sunset）不直接等同登录态。
 
 【排查清单】凡是在 config.toml、自定义 agent TOML、定时任务、codex exec --model 脚本里出现过的 model id，都要 grep 一遍；命中已下线 ID 就改，别等请求失败才发现。
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜全库排查 model id（grep 已下线 ID）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜全库排查 model id（grep 已下线 ID）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 2026-07-23 已下线 + 2026-08-31 将下线的 Codex 系列
-rg -n "gpt-5-codex|gpt-5\.1-codex|gpt-5\.1-codex-max|gpt-5\.1-codex-mini|gpt-5\.2-codex|gpt-5\.4(-mini)?|gpt-5\.2|gpt-5\.3-codex" \
-  ~/.codex/ .codex/ ./  2>/dev/null
+
+rg -n "gpt-5-codex|gpt-5.1-codex|gpt-5.1-codex-max|gpt-5.1-codex-mini|gpt-5.2-codex|gpt-5.4(-mini)?|gpt-5.2|gpt-5.3-codex"   
+~/.codex/ .codex/ ./  2>/dev/null
 
 # 精确到配置文件与 agent 文件
-rg -n "model\s*=" ~/.codex/config.toml ~/.codex/*.config.toml ~/.codex/agents/ .codex/agents/ 2>/dev/null
+
+rg -n "model\s\*=" ~/.codex/config.toml ~/.codex/\*.config.toml ~/.codex/agents/ .codex/agents/ 2>/dev/null
 
 # 也查脚本里的 --model / -c model=
+
 rg -n -- "--model|-c[ =]model" . 2>/dev/null
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜迁移映射（直接抄）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜迁移映射（直接抄）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 已下线/将下线 → 推荐替代
-gpt-5-codex        → gpt-5.6-sol
-gpt-5.1-codex      → gpt-5.6-sol
-gpt-5.1-codex-max  → gpt-5.6-sol
-gpt-5.1-codex-mini → gpt-5.6-terra
-gpt-5.2-codex      → gpt-5.6-sol
+
+gpt-5-codex        → gpt-5.6-sol  
+gpt-5.1-codex      → gpt-5.6-sol  
+gpt-5.1-codex-max  → gpt-5.6-sol  
+gpt-5.1-codex-mini → gpt-5.6-terra  
+gpt-5.2-codex      → gpt-5.6-sol  
 gpt-5.4            → gpt-5.6-terra   # 仅 ChatGPT 登录态
+
 # 官方弃用页仍写 gpt-5.5 / gpt-5.4-mini 作替代的属旧快照，以 gpt-5.6 家族为准
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜config.toml 与 agent 文件里的正确写法】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜config.toml 与 agent 文件里的正确写法】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ~/.codex/config.toml
+
 model = "gpt-5.6-terra"        # 日常默认，中档省钱
 
 # .codex/agents/implementer.toml
+
 model = "gpt-5.6-sol"          # 复杂实现用前沿模型
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜一键检测当前会话用哪个模型 + 是否可用】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-codex exec --json "回复你当前使用的模型 id，不要改文件" 2>/dev/null \
-  | jq -r 'select(.type == "turn.completed") | .model // empty' | tail -1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜一键检测当前会话用哪个模型 + 是否可用】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+codex exec --json "回复你当前使用的模型 id，不要改文件" 2>/dev/null   
+| jq -r 'select(.type == "turn.completed") | .model // empty' | tail -1
+
 # 交互式里更简单：直接 /status 看活动模型
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| model（config.toml） | 随登录态/发行渠道 | ★gpt-5.6-terra（日常）、gpt-5.6-sol（复杂/审查） | 别写已下线 ID |
-| 自定义 agent model | 继承父会话 | ★explorer→gpt-5.6-terra/luna，worker/reviewer→gpt-5.6-sol | 分档省钱的落点 |
-| 登录态（认证路径） | ChatGPT 登录 | 日常 ChatGPT 登录；CI/批量用 API key | 决定弃用是否影响你、计费模式 |
-| model_reasoning_effort | 官方未明文 | 常规 medium、CI low | 弃用迁移时顺带核对，别带旧参数 |
+| 参数                     | 官方默认值      | 一人公司推荐值                                                  | 说明              |
+| ---------------------- | ---------- | -------------------------------------------------------- | --------------- |
+| model（config.toml）     | 随登录态/发行渠道  | ★gpt-5.6-terra（日常）、gpt-5.6-sol（复杂/审查）                    | 别写已下线 ID        |
+| 自定义 agent model        | 继承父会话      | ★explorer→gpt-5.6-terra/luna，worker/reviewer→gpt-5.6-sol | 分档省钱的落点         |
+| 登录态（认证路径）              | ChatGPT 登录 | 日常 ChatGPT 登录；CI/批量用 API key                             | 决定弃用是否影响你、计费模式  |
+| model_reasoning_effort | 官方未明文      | 常规 medium、CI low                                         | 弃用迁移时顺带核对，别带旧参数 |
 
 必须改的一项：grep 出所有 gpt-5.4 / gpt-5.4-mini 与 2026-07-23 已下线的 codex 系列 ID，在 2026-08-31 前全部替换；这属于「不改会断」的硬项。
 
@@ -2454,12 +2659,12 @@ P0（短期），P1（长期）。08-31 的 gpt-5.4 下线是「不改会断」�
 
 ### 信息来源
 
-1. OpenAI 官方弃用页（shutdown 日期与替代模型）：https://platform.openai.com/docs/deprecations
-2. OpenAI 官方 Codex 模型文档：https://developers.openai.com/codex/models
-3. 登录态 vs API key 架构差异（后端/计费/模型访问/Cloud/Fast mode）：https://codex.danielvaughan.com/2026/06/13/codex-cli-authentication-paths-chatgpt-login-api-key-billing-rate-limits-model-access
-4. 2026-07-23 与 08-31 两波 Codex 下线清单与迁移：https://aitooltier.com/is-it-down/codex
-5. 弃用迁移清单与映射表：https://www.developersdigest.tech/blog/migrating-off-retired-gpt-models-2026
-6. gpt-5.3-codex 弃用时间线核对：https://chatforest.com/builders-log/gpt-5-3-codex-default-copilot-july-23-deprecations-builder-guide/
+1. OpenAI 官方弃用页（shutdown 日期与替代模型）：<https://platform.openai.com/docs/deprecations>
+2. OpenAI 官方 Codex 模型文档：<https://developers.openai.com/codex/models>
+3. 登录态 vs API key 架构差异（后端/计费/模型访问/Cloud/Fast mode）：<https://codex.danielvaughan.com/2026/06/13/codex-cli-authentication-paths-chatgpt-login-api-key-billing-rate-limits-model-access>
+4. 2026-07-23 与 08-31 两波 Codex 下线清单与迁移：<https://aitooltier.com/is-it-down/codex>
+5. 弃用迁移清单与映射表：<https://www.developersdigest.tech/blog/migrating-off-retired-gpt-models-2026>
+6. gpt-5.3-codex 弃用时间线核对：<https://chatforest.com/builders-log/gpt-5-3-codex-default-copilot-july-23-deprecations-builder-guide/>
 
 ### 待核实
 
@@ -2474,9 +2679,9 @@ P0（短期），P1（长期）。08-31 的 gpt-5.4 下线是「不改会断」�
 
 核心矛盾只有一个：Codex 自 2026-02-01 起彻底移除 Chat Completions 支持，wire_api 只认 "responses"（Responses API），而国产模型 API 的主流仍是 Chat Completions。国内实测 chatgpt.com 与 api.openai.com 均超时不可达，api.deepseek.com 可达（约 137ms），所以「适配国内环境」=「让 Codex 的 Responses 请求落到一个能讲 Responses 协议的国产端点或网关」。
 
-【三条路线，按优先级】
-① 路线 A：直连已原生支持 Responses API 的国产大厂。截至 2026-08，国产模型中只有 DeepSeek（deepseek-v4-flash，专为 Codex 实现了 Responses 协议）和 Qwen/通义（阿里云百炼 DashScope 的 /compatible-mode/v1/responses，支持 previous_response_id）原生支持 Responses。Kimi（Moonshot）与 GLM（智谱）目前只提供 Chat Completions，直连必 404。
-② 路线 B：自建翻译网关。当目标模型只讲 Chat Completions 时，在中间放一个「翻译官」，对外暴露 /v1/responses、对内转成各家的 Chat Completions。首选 LiteLLM（需 ≥1.66.3.dev5 才有完整 Responses 兼容），国产开源替代有 New API（v1.0.0-rc.24 起原生支持 /v1/responses 路由，但 Chat→Responses 转换仍标注「开发中」）、CLIProxyAPI、codex-cn-bridge 等单文件桥接器。
+【三条路线，按优先级】  
+① 路线 A：直连已原生支持 Responses API 的国产大厂。截至 2026-08，国产模型中只有 DeepSeek（deepseek-v4-flash，专为 Codex 实现了 Responses 协议）和 Qwen/通义（阿里云百炼 DashScope 的 /compatible-mode/v1/responses，支持 previous_response_id）原生支持 Responses。Kimi（Moonshot）与 GLM（智谱）目前只提供 Chat Completions，直连必 404。  
+② 路线 B：自建翻译网关。当目标模型只讲 Chat Completions 时，在中间放一个「翻译官」，对外暴露 /v1/responses、对内转成各家的 Chat Completions。首选 LiteLLM（需 ≥1.66.3.dev5 才有完整 Responses 兼容），国产开源替代有 New API（v1.0.0-rc.24 起原生支持 /v1/responses 路由，但 Chat→Responses 转换仍标注「开发中」）、CLIProxyAPI、codex-cn-bridge 等单文件桥接器。  
 ③ 路线 C：本地跑开源模型（Ollama / LM Studio / llama.cpp），断网可用，但要求模型支持工具调用，且小模型易翻车。
 
 【探活是第一步】不管哪条路线，先用 curl 探对方 /v1/responses 是否存在，再决定直连还是上网关——这一步省钱又省时间。
@@ -2487,148 +2692,163 @@ P0（短期），P1（长期）。08-31 的 gpt-5.4 下线是「不改会断」�
 
 ### 可直接复制的模板命令配置
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【0｜先探活：确认端点到底讲不讲 Responses】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-curl -s -X POST https://api.deepseek.com/v1/responses \
-  -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"deepseek-v4-flash","input":"hi","max_output_tokens":5}'
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【0｜先探活：确认端点到底讲不讲 Responses】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+curl -s -X POST <https://api.deepseek.com/v1/responses>   
+-H "Authorization: Bearer $DEEPSEEK_API_KEY"   
+-H "Content-Type: application/json"   
+-d '{"model":"deepseek-v4-flash","input":"hi","max_output_tokens":5}'
+
 # 返回 200 + JSON = 直连可行；404/400 = 只实现了 chat 系，跳路线 B
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜DeepSeek 直连（推荐，国产首选）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜DeepSeek 直连（推荐，国产首选）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 官方一键脚本（自动备份旧配置、写 models.json、校验语法）
-bash <(curl -fsSL https://cdn.deepseek.com/api-docs/codex-deepseek-setup-en.sh)
+
+bash <(curl -fsSL <https://cdn.deepseek.com/api-docs/codex-deepseek-setup-en.sh>)
 
 # 手动版 ~/.codex/config.toml
-model = "deepseek-v4-flash"
-model_provider = "deepseek"
-preferred_auth_method = "apikey"
-forced_login_method = "api"
-model_reasoning_effort = "high"
+
+model = "deepseek-v4-flash"  
+model_provider = "deepseek"  
+preferred_auth_method = "apikey"  
+forced_login_method = "api"  
+model_reasoning_effort = "high"  
 model_catalog_json = "~/.codex/models.json"
 
-[model_providers.deepseek]
-name = "deepseek"
-base_url = "https://api.deepseek.com/"
-wire_api = "responses"
+[model_providers.deepseek]  
+name = "deepseek"  
+base_url = "<https://api.deepseek.com/>"  
+wire_api = "responses"  
 experimental_bearer_token = "sk-你的DeepSeekAPIKey"
 
 # 更规范的密钥写法（用环境变量，不落盘明文）
-[model_providers.deepseek]
-name = "DeepSeek"
-base_url = "https://api.deepseek.com/v1"
-env_key = "DEEPSEEK_API_KEY"
-wire_api = "responses"
-requires_openai_auth = false
-request_max_retries = 3
-stream_max_retries = 3
+
+[model_providers.deepseek]  
+name = "DeepSeek"  
+base_url = "<https://api.deepseek.com/v1>"  
+env_key = "DEEPSEEK_API_KEY"  
+wire_api = "responses"  
+requires_openai_auth = false  
+request_max_retries = 3  
+stream_max_retries = 3  
 stream_idle_timeout_ms = 120000
 
 # 调用
-export DEEPSEEK_API_KEY="sk-你的key"
+
+export DEEPSEEK_API_KEY="sk-你的key"  
 codex exec "给这个 Python 脚本加上类型注解"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜Qwen/通义 直连（DashScope 兼容模式）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜Qwen/通义 直连（DashScope 兼容模式）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 export DASHSCOPE_API_KEY="你的百炼Key"
+
 # ~/.codex/config.toml
-model = "qwen-plus"
+
+model = "qwen-plus"  
 model_provider = "qwen"
 
-[model_providers.qwen]
-name = "Qwen"
-base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-env_key = "DASHSCOPE_API_KEY"
-wire_api = "responses"
+[model_providers.qwen]  
+name = "Qwen"  
+base_url = "<https://dashscope.aliyuncs.com/compatible-mode/v1>"  
+env_key = "DASHSCOPE_API_KEY"  
+wire_api = "responses"  
 requires_openai_auth = false
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜LiteLLM 网关（Kimi / GLM / 任何只讲 chat 的模型）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜LiteLLM 网关（Kimi / GLM / 任何只讲 chat 的模型）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 装：pip install "litellm[proxy]"
+
 # ~/.codex-proxy/litellm_config.yaml
+
 model_list:
-  - model_name: deepseek-chat
-    litellm_params:
-      model: deepseek/deepseek-chat
-      api_key: os.environ/DEEPSEEK_API_KEY
-  - model_name: kimi-k3
-    litellm_params:
-      model: moonshot/kimi-k3
-      api_key: os.environ/MOONSHOT_API_KEY
-  - model_name: glm-5.2
-    litellm_params:
-      model: zai/glm-5.2
-      api_key: os.environ/ZAI_API_KEY
-  - model_name: qwen-plus
-    litellm_params:
-      model: qwen/qwen-plus
-      api_key: os.environ/DASHSCOPE_API_KEY
-general_settings:
+
+- model_name: deepseek-chat  
+  litellm_params:  
+  model: deepseek/deepseek-chat  
+  api_key: os.environ/DEEPSEEK_API_KEY
+- model_name: kimi-k3  
+  litellm_params:  
+  model: moonshot/kimi-k3  
+  api_key: os.environ/MOONSHOT_API_KEY
+- model_name: glm-5.2  
+  litellm_params:  
+  model: zai/glm-5.2  
+  api_key: os.environ/ZAI_API_KEY
+- model_name: qwen-plus  
+  litellm_params:  
+  model: qwen/qwen-plus  
+  api_key: os.environ/DASHSCOPE_API_KEY  
+  general_settings:  
   master_key: sk-local-codex
 
 # 启动：litellm --config litellm_config.yaml --port 4000
 
 # Codex 侧 ~/.codex/config.toml
-model = "deepseek-chat"
+
+model = "deepseek-chat"  
 model_provider = "litellm"
 
-[model_providers.litellm]
-name = "LiteLLM"
-base_url = "http://127.0.0.1:4000/v1"
-env_key = "LITELLM_API_KEY"
-wire_api = "responses"
+[model_providers.litellm]  
+name = "LiteLLM"  
+base_url = "<http://127.0.0.1:4000/v1>"  
+env_key = "LITELLM_API_KEY"  
+wire_api = "responses"  
 requires_openai_auth = false
 
-export LITELLM_API_KEY="sk-local-codex"
+export LITELLM_API_KEY="sk-local-codex"  
 codex
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜New API 网关（国产，原生 /v1/responses 路由）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-docker run --name new-api -d --restart always \
-  -p 3000:3000 -e TZ=Asia/Shanghai -v ./data:/data \
-  calciumion/new-api:latest
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜New API 网关（国产，原生 /v1/responses 路由）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+docker run --name new-api -d --restart always   
+-p 3000:3000 -e TZ=Asia/Shanghai -v ./data:/data   
+calciumion/new-api:latest
+
 # 初始账号 root/123456，改密码→建渠道→建令牌 sk-xxx
 
 # Codex 侧
-model_provider = "custom"
-model = "deepseek-chat"
-model_reasoning_effort = "high"
+
+model_provider = "custom"  
+model = "deepseek-chat"  
+model_reasoning_effort = "high"  
 disable_response_storage = true
 
-[model_providers.custom]
-name = "custom"
-base_url = "http://你的IP:3000/v1"
-wire_api = "responses"
+[model_providers.custom]  
+name = "custom"  
+base_url = "<http://你的IP:3000/v1>"  
+wire_api = "responses"  
 requires_openai_auth = false
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜纯环境变量法（聚合网关 / 中转，最省事）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-export OPENAI_BASE_URL="http://127.0.0.1:4000/v1"   # 新版 Codex 认这个
-export OPENAI_API_BASE="$OPENAI_BASE_URL"           # 旧版(≤0.16)认这个，两个都设
-export OPENAI_API_KEY="sk-你的网关key"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜纯环境变量法（聚合网关 / 中转，最省事）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+export OPENAI_BASE_URL="<http://127.0.0.1:4000/v1>"   # 新版 Codex 认这个  
+export OPENAI_API_BASE="$OPENAI_BASE_URL"           # 旧版(≤0.16)认这个，两个都设  
+export OPENAI_API_KEY="sk-你的网关key"  
 codex
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| wire_api | "responses"（省略即默认） | ★必须 "responses" | 2026-02 起唯一合法值，写 "chat" 直接硬报错 |
-| model_provider | openai（内置） | deepseek / qwen / litellm | ★必须改；且只能写在用户级 ~/.codex/config.toml |
-| base_url | api.openai.com/v1 | DeepSeek: https://api.deepseek.com（或 /v1）；Qwen: https://dashscope.aliyuncs.com/compatible-mode/v1；网关: http://127.0.0.1:4000/v1 | ★必须改；写到 OpenAI 兼容根路径，网关场景末尾带 /v1 |
-| model | gpt-5.x | deepseek-v4-flash（日常）/ qwen-plus | 以对方 GET /v1/models 返回为准 |
-| model_reasoning_effort | 未明文 | DeepSeek: low/high/max（默认 high） | ★按模型支持值域填；Kimi/GLM/Qwen 部分模型 reasoning 是开关非档位 |
-| env_key | 无 | DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / LITELLM_API_KEY | 推荐用环境变量，替代 experimental_bearer_token 明文 |
-| experimental_bearer_token | 无 | 不推荐（明文落盘） | 内联 key，DeepSeek 官方脚本用这个 |
-| requires_openai_auth | false | false | 走第三方必须 false，否则去要 ChatGPT 登录态 |
-| request_max_retries / stream_max_retries / stream_idle_timeout_ms | 4 / 5 / 300000 | 3 / 3 / 120000（国内网络可调大 idle） | 国产端点抖动时调大 stream_idle_timeout_ms |
-| model_catalog_json | 无 | ~/.codex/models.json（DeepSeek 官方脚本生成） | 声明上下文窗口/推理档位，缺了模型能力不完整 |
+| 参数                                                                | 官方默认值              | 一人公司推荐值                                                                                                                              | 说明                                            |
+| ----------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| wire_api                                                          | "responses"（省略即默认） | ★必须 "responses"                                                                                                                      | 2026-02 起唯一合法值，写 "chat" 直接硬报错                 |
+| model_provider                                                    | openai（内置）         | deepseek / qwen / litellm                                                                                                            | ★必须改；且只能写在用户级 ~/.codex/config.toml            |
+| base_url                                                          | api.openai.com/v1  | DeepSeek: <https://api.deepseek.com（或> /v1）；Qwen: <https://dashscope.aliyuncs.com/compatible-mode/v1；网关>: <http://127.0.0.1:4000/v1> | ★必须改；写到 OpenAI 兼容根路径，网关场景末尾带 /v1              |
+| model                                                             | gpt-5.x            | deepseek-v4-flash（日常）/ qwen-plus                                                                                                     | 以对方 GET /v1/models 返回为准                       |
+| model_reasoning_effort                                            | 未明文                | DeepSeek: low/high/max（默认 high）                                                                                                      | ★按模型支持值域填；Kimi/GLM/Qwen 部分模型 reasoning 是开关非档位 |
+| env_key                                                           | 无                  | DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / LITELLM_API_KEY                                                                               | 推荐用环境变量，替代 experimental_bearer_token 明文       |
+| experimental_bearer_token                                         | 无                  | 不推荐（明文落盘）                                                                                                                            | 内联 key，DeepSeek 官方脚本用这个                       |
+| requires_openai_auth                                              | false              | false                                                                                                                                | 走第三方必须 false，否则去要 ChatGPT 登录态                 |
+| request_max_retries / stream_max_retries / stream_idle_timeout_ms | 4 / 5 / 300000     | 3 / 3 / 120000（国内网络可调大 idle）                                                                                                         | 国产端点抖动时调大 stream_idle_timeout_ms              |
+| model_catalog_json                                                | 无                  | ~/.codex/models.json（DeepSeek 官方脚本生成）                                                                                                | 声明上下文窗口/推理档位，缺了模型能力不完整                        |
 
 必须改的四项：① wire_api="responses"（不写默认也对，但别写 chat）；② model_provider 指向你的 provider 并写在用户级配置；③ base_url 换成国产端点/网关（带对 /v1）；④ requires_openai_auth=false。
 
@@ -2637,7 +2857,7 @@ codex
 1. 【wire_api 写错层级】wire_api 必须写在 [model_providers.x] 里，不是 [profiles.x]。写错位置直接不生效，报 404。
 2. 【误以为还能 wire_api="chat"】2026-02 起写 "chat" 会硬报错「wire_api = "chat" is no longer supported」。大量 2025 年的旧教程还在教你写 chat，照抄必翻车（ofox.ai 甚至到 2026-06 还在教错的）。
 3. 【Kimi / GLM 直连必 404】这两家目前只提供 Chat Completions，没有 /v1/responses 端点。curl 探 /v1/chat/completions 通、但 Codex 打 /v1/responses 404，就是协议不匹配，不是网络问题。
-4. 【base_url 漏写 /v1 或多写尾斜杠】网关/中转的路由前缀通常是 /v1，漏写直接 404；DeepSeek 官方脚本写 https://api.deepseek.com/（带尾斜杠），规范写法是 https://api.deepseek.com/v1，两者都能通但别混。
+4. 【base_url 漏写 /v1 或多写尾斜杠】网关/中转的路由前缀通常是 /v1，漏写直接 404；DeepSeek 官方脚本写 <https://api.deepseek.com/（带尾斜杠），规范写法是> <https://api.deepseek.com/v1，两者都能通但别混。>
 5. 【reasoning 型号 + 工具调用冲突】deepseek-reasoner 这类纯推理型号与 Codex 的 function 工具调用配合易出问题，跑代码任务优先用非推理型号（deepseek-v4-flash）。
 6. 【模型名不在白名单，启动崩】自定义 provider 的 model 名要精确匹配（OpenRouter 要带前缀如 openai/gpt-5.3-codex），先跑 /v1/models 或 --list-models 核对。
 7. 【ChatGPT 登录态锁定模型目录】登录态只能用 OpenAI 目录，接不了第三方；要用国产模型必须切 API key 方式（preferred_auth_method="apikey" + forced_login_method="api"）。
@@ -2672,14 +2892,14 @@ P0。对国内一人公司这是「不做就没得用」的硬前置——chatgp
 
 ### 信息来源
 
-1. DeepSeek 官方 Responses API 文档（兼容性矩阵）：https://api-docs.deepseek.com/zh-cn/guides/responses_api
-2. DeepSeek 官方「接入 Codex」一键脚本：https://cdn.deepseek.com/api-docs/codex-deepseek-setup-en.sh
-3. Codex 官方弃用 Chat Completions 讨论：#7782 https://github.com/openai/codex/discussions/7782
-4. wire_api 移除溯源与第三方 provider 实测：https://www.alexdunlop.com/writing/codex-cli-config-toml
-5. Codex config.toml 第三方 provider 参考（项目配置不能覆盖 provider 的安全边界）：https://www.morphllm.com/codex-provider-configuration
-6. LiteLLM 网关接入 Codex（版本要求 1.66.3.dev5+）：https://codex.danielvaughan.com/2026/04/21/codex-cli-ai-gateway-multi-provider-routing-cost-control-failover
-7. New API 原生 /v1/responses 与 CC Switch 实测：https://colobu.com/2026/05/20/cliproxyapi-codex-support-domestic-models
-8. 国产模型协议兼容全景（Responses 支持现状表）：https://www.hqwc.cn/a/406695.html
+1. DeepSeek 官方 Responses API 文档（兼容性矩阵）：<https://api-docs.deepseek.com/zh-cn/guides/responses_api>
+2. DeepSeek 官方「接入 Codex」一键脚本：<https://cdn.deepseek.com/api-docs/codex-deepseek-setup-en.sh>
+3. Codex 官方弃用 Chat Completions 讨论：#7782 <https://github.com/openai/codex/discussions/7782>
+4. wire_api 移除溯源与第三方 provider 实测：<https://www.alexdunlop.com/writing/codex-cli-config-toml>
+5. Codex config.toml 第三方 provider 参考（项目配置不能覆盖 provider 的安全边界）：<https://www.morphllm.com/codex-provider-configuration>
+6. LiteLLM 网关接入 Codex（版本要求 1.66.3.dev5+）：<https://codex.danielvaughan.com/2026/04/21/codex-cli-ai-gateway-multi-provider-routing-cost-control-failover>
+7. New API 原生 /v1/responses 与 CC Switch 实测：<https://colobu.com/2026/05/20/cliproxyapi-codex-support-domestic-models>
+8. 国产模型协议兼容全景（Responses 支持现状表）：<https://www.hqwc.cn/a/406695.html>
 
 ### 待核实
 
@@ -2707,120 +2927,135 @@ P0。对国内一人公司这是「不做就没得用」的硬前置——chatgp
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜五个任务 prompt 模板（套四要素骨架）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜五个任务 prompt 模板（套四要素骨架）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ① 补测试
-Goal: 为 src/utils/money.ts 补全单元测试。
-Context: @src/utils/money.ts, @vitest.config.ts, 现有测试在 test/money.test.ts
-Constraints: 复用现有测试风格；不要改生产代码；覆盖率提到 85% 以上。
+
+Goal: 为 src/utils/money.ts 补全单元测试。  
+Context: @src/utils/money.ts, @vitest.config.ts, 现有测试在 test/money.test.ts  
+Constraints: 复用现有测试风格；不要改生产代码；覆盖率提到 85% 以上。  
 Done when: pnpm test money 全绿，且 coverage 报告里该文件分支覆盖 ≥85%。
 
 # ② 重构
-/plan 把 Dashboard 组件重构为 React Hooks。保留所有现有测试。对抽取出的组件补新测试。
+
+/plan 把 Dashboard 组件重构为 React Hooks。保留所有现有测试。对抽取出的组件补新测试。  
 Done when: pnpm test 通过，每个函数圈复杂度不增加，公开 API 不变。
 
 # ③ 迁移
-Goal: 把 Express 的 user router 迁移到 Hono。
-Context: src/routes/user.ts、middleware/auth.ts、test/user.test.ts
-Constraints: 不引入新依赖大版本跳；公开 API 与响应格式不变。
+
+Goal: 把 Express 的 user router 迁移到 Hono。  
+Context: src/routes/user.ts、middleware/auth.ts、test/user.test.ts  
+Constraints: 不引入新依赖大版本跳；公开 API 与响应格式不变。  
 Done when: pnpm test 全绿 + 手动 curl /users/:id 返回原结构。
 
 # ④ PR review（只读，不 merge）
+
 /review 重点看：鉴权绕过、XSS/SQL 注入、错误处理是否完整、是否影响公开 API、是否缺关键路径测试。只输出高危问题与建议修复位置，不要改代码。
 
 # ⑤ 批量修 bug
+
 codex exec --sandbox workspace-write "逐个修复 test 目录下失败的用例：先跑 pnpm test 拿失败清单，再每个失败用例最小改动修复，改完重跑对应用例确认转绿，最后汇总：根因/改动文件/验证结果"
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜SKILL.md 最小模板（放 .agents/skills/test-gen/SKILL.md）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜SKILL.md 最小模板（放 .agents/skills/test-gen/SKILL.md）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
----
-name: test-gen
+----------------------------
+
+name: test-gen  
 description: 为改动或指定模块生成单元测试。触发条件：用户要补测试、提覆盖率、写单测；不要用于改生产代码。
----
+-----------------------------------------------------------
 
 ## Goal
+
 为指定文件生成风格一致、可运行的单元测试。
 
 ## Workflow
+
 1. 先读目标文件与现有测试，确认测试框架与命名风格。
 2. 列出要覆盖的关键分支与边界用例。
 3. 写测试，复用已有 fixture/mock。
 4. 运行对应测试命令，失败则修正到转绿。
 
 ## Safety
+
 - 不改生产代码。
 - 不引入新依赖。
 - 不覆盖或删除现有测试。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜自定义 agent（审查用，放 .codex/agents/security-reviewer.toml）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-name = "security-reviewer"
-description = "审查代码变更中的安全漏洞"
-developer_instructions = """
-你是安全向代码审查者，分析变更中的：SQL 注入/XSS/CSRF、代码里的密钥、不安全依赖、缺失的输入校验。
-按严重程度输出结构化清单并标注文件位置，不要改代码。
-"""
-model = "gpt-5.6-sol"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜自定义 agent（审查用，放 .codex/agents/security-reviewer.toml）】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+name = "security-reviewer"  
+description = "审查代码变更中的安全漏洞"  
+developer_instructions = """  
+你是安全向代码审查者，分析变更中的：SQL 注入/XSS/CSRF、代码里的密钥、不安全依赖、缺失的输入校验。  
+按严重程度输出结构化清单并标注文件位置，不要改代码。  
+"""  
+model = "gpt-5.6-sol"  
 sandbox_mode = "read-only"
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜Plugin 打包（~/.agents/plugins/my-plugin/）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜Plugin 打包（~/.agents/plugins/my-plugin/）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # plugin.json
-{
-  "name": "my-codex-toolkit",
-  "version": "1.0.0",
-  "description": "补测试、lint 修复、PR 审查的一体化技能包",
-  "components": {
-    "skills": ["skills/test-gen", "skills/lint-fix"],
-    "mcp_servers": ["mcp.json"]
-  },
-  "install_policy": "AVAILABLE"
+
+{  
+"name": "my-codex-toolkit",  
+"version": "1.0.0",  
+"description": "补测试、lint 修复、PR 审查的一体化技能包",  
+"components": {  
+"skills": ["skills/test-gen", "skills/lint-fix"],  
+"mcp_servers": ["mcp.json"]  
+},  
+"install_policy": "AVAILABLE"  
 }
 
 # 目录树
-my-plugin/
-├── plugin.json
-├── skills/
-│   ├── test-gen/SKILL.md
-│   └── lint-fix/SKILL.md
+
+my-plugin/  
+├── plugin.json  
+├── skills/  
+│   ├── test-gen/SKILL.md  
+│   └── lint-fix/SKILL.md  
 └── mcp.json
 
 # 建本地 marketplace 并用 CLI 添加
+
 # marketplace.json（plugins[] 指向各 plugin 文件夹，source.path 用 ./- 相对路径）
-codex plugin marketplace add ./local-marketplace-root
+
+codex plugin marketplace add ./local-marketplace-root  
 codex plugin marketplace list
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜config.toml 里的 Skill 开关】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[skills]
-test-gen = true
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜config.toml 里的 Skill 开关】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+[skills]  
+test-gen = true  
 legacy-deploy = false
 
-[skills.code-review]
-enabled = true
-invocation = "implicit"   # explicit=只能 $skill-name 手动触发
+[skills.code-review]  
+enabled = true  
+invocation = "implicit"   # explicit=只能 $skill-name 手动触发  
 priority = 5
 
-[plugins]
+[plugins]  
 my-codex-toolkit = true
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| prompt 骨架 | Goal/Context/Constraints/Done when 四要素 | 五个模板全部套四要素 | 官方 best practices 推荐，缺 Done when 是最大反模式 |
-| Skill 位置 | .agents/skills/（仓库级）/ ~/.agents/skills/（个人级） | 先放仓库 .agents/skills/ 验证，再考虑 Plugin | ★单仓库别过早 Plugin 化 |
-| SKILL.md description | 必填，触发条件 | 写「什么时候用/什么时候不用」的判定句 | ★决定渐进式披露是否命中 |
-| [skills.x].invocation | implicit（隐式自动触发） | 高风险 Skill 设 explicit | explicit 只能 $skill-name 手动触发 |
-| [skills.x].priority | 无 | 冲突时给高分 | 多个 Skill 同时命中时高者胜 |
-| install_policy | INSTALLED_BY_DEFAULT | AVAILABLE（装后手动启用） | 可选 INSTALLED_BY_DEFAULT/AVAILABLE/NOT_AVAILABLE |
-| agent model 分档 | 继承父会话 | explorer→便宜、reviewer→贵 | 审查/重构用 gpt-5.6-sol，探索/补测试用 terra/luna |
-| agents.max_threads | 6 | 6（保持默认） | 批量修 bug 的并行上限 |
+| 参数                    | 官方默认值                                        | 一人公司推荐值                            | 说明                                              |
+| --------------------- | -------------------------------------------- | ---------------------------------- | ----------------------------------------------- |
+| prompt 骨架             | Goal/Context/Constraints/Done when 四要素       | 五个模板全部套四要素                         | 官方 best practices 推荐，缺 Done when 是最大反模式         |
+| Skill 位置              | .agents/skills/（仓库级）/ ~/.agents/skills/（个人级） | 先放仓库 .agents/skills/ 验证，再考虑 Plugin | ★单仓库别过早 Plugin 化                                |
+| SKILL.md description  | 必填，触发条件                                      | 写「什么时候用/什么时候不用」的判定句                | ★决定渐进式披露是否命中                                    |
+| [skills.x].invocation | implicit（隐式自动触发）                             | 高风险 Skill 设 explicit               | explicit 只能 $skill-name 手动触发                    |
+| [skills.x].priority   | 无                                            | 冲突时给高分                             | 多个 Skill 同时命中时高者胜                               |
+| install_policy        | INSTALLED_BY_DEFAULT                         | AVAILABLE（装后手动启用）                  | 可选 INSTALLED_BY_DEFAULT/AVAILABLE/NOT_AVAILABLE |
+| agent model 分档        | 继承父会话                                        | explorer→便宜、reviewer→贵             | 审查/重构用 gpt-5.6-sol，探索/补测试用 terra/luna           |
+| agents.max_threads    | 6                                            | 6（保持默认）                            | 批量修 bug 的并行上限                                   |
 
 必须改的一项：SKILL.md 的 description 必须写成触发条件（含「不要用于 X」），否则模型要么不触发、要么误触发；这是 Skill 好用与否的分水岭。
 
@@ -2862,12 +3097,12 @@ P1。不是「不做就断」的硬前置（P0 是国内适配和 config），�
 
 ### 信息来源
 
-1. OpenAI 官方 best practices（四要素 prompt、AGENTS.md、Skills）：https://developers.openai.com/codex/learn/best-practices
-2. OpenAI 官方 Skills 最佳实践（Agents SDK 仓库，SKILL.md 目录与 if/then 规则）：https://developers.openai.com/blog/skills-agents-sdk
-3. OpenAI 官方 Plugin 打包（.codex-plugin/plugin.json、marketplace.json、codex plugin marketplace add）：https://developers.openai.com/codex/plugins/build
-4. Codex 定制栈五层体系（AGENTS.md/Skills/MCP/Subagents/Plugins）：https://codex.danielvaughan.com/2026/04/12/codex-cli-customisation-stack-unified-system
-5. Prompt 模板与工作流（Bug Fix/Feature/Review/Refactor）：https://codex.danielvaughan.com/2026/05/21/codex-cli-prompt-engineering-outcome-first-patterns-gpt55-senior-developer-workflows
-6. Skills & Plugins 结构（agents/openai.yaml、config.toml [skills]）：https://opentools.ai/resources/codex-skills-and-plugins
+1. OpenAI 官方 best practices（四要素 prompt、AGENTS.md、Skills）：<https://developers.openai.com/codex/learn/best-practices>
+2. OpenAI 官方 Skills 最佳实践（Agents SDK 仓库，SKILL.md 目录与 if/then 规则）：<https://developers.openai.com/blog/skills-agents-sdk>
+3. OpenAI 官方 Plugin 打包（.codex-plugin/plugin.json、marketplace.json、codex plugin marketplace add）：<https://developers.openai.com/codex/plugins/build>
+4. Codex 定制栈五层体系（AGENTS.md/Skills/MCP/Subagents/Plugins）：<https://codex.danielvaughan.com/2026/04/12/codex-cli-customisation-stack-unified-system>
+5. Prompt 模板与工作流（Bug Fix/Feature/Review/Refactor）：<https://codex.danielvaughan.com/2026/05/21/codex-cli-prompt-engineering-outcome-first-patterns-gpt55-senior-developer-workflows>
+6. Skills & Plugins 结构（agents/openai.yaml、config.toml [skills]）：<https://opentools.ai/resources/codex-skills-and-plugins>
 
 ### 待核实
 
@@ -2885,86 +3120,103 @@ Codex 报错九成来自「登录、额度、网络、权限」四件事，先�
 
 【按症状定位，别盲目换模型】不同状态码指向完全不同的问题：401=Key 没读到或无效；404=base_url 拼错或接口不支持 Responses；429=超频或额度用尽；stream disconnected=SSE 被中断/代理超时/上游波动；「能聊天但从不改文件」=模型不支持工具调用。最浪费时间的行为是「明明是协议问题，却不停换更贵的模型」。
 
-【四类核心故障的定位法】
-① 连接失败：先 curl 直接打对方端点验证网络与 key，再查 Codex 配置。401 排查顺序——echo $KEY 看变量是否导出、curl 测 key 是否有效、确认没有同时定义 env_key 和 [auth] 表（两者互斥）。
-② wire_api 协议不匹配（404 或空流）：Codex 只讲 Responses API，base_url 背后的端点若只实现 Chat Completions，就会 404/unknown endpoint/开局空流。判据是「curl /v1/chat/completions 能通、Codex 却失败」。解法：换支持 Responses 的端点，或加翻译网关（LiteLLM/New API）。
-③ 额度耗尽（429）：分两种——请求超频（rate limit exceeded，等一分钟降频）和限额用尽（quota exhausted / token-plan 1-week quota has been exhausted，等 7 天窗口重置或买用量包）。429 响应没有 retryAfterSeconds 说明只是瞬时预算空，退避一秒即可；固定间隔重试反而会延长限流。
+【四类核心故障的定位法】  
+① 连接失败：先 curl 直接打对方端点验证网络与 key，再查 Codex 配置。401 排查顺序——echo $KEY 看变量是否导出、curl 测 key 是否有效、确认没有同时定义 env_key 和 [auth] 表（两者互斥）。  
+② wire_api 协议不匹配（404 或空流）：Codex 只讲 Responses API，base_url 背后的端点若只实现 Chat Completions，就会 404/unknown endpoint/开局空流。判据是「curl /v1/chat/completions 能通、Codex 却失败」。解法：换支持 Responses 的端点，或加翻译网关（LiteLLM/New API）。  
+③ 额度耗尽（429）：分两种——请求超频（rate limit exceeded，等一分钟降频）和限额用尽（quota exhausted / token-plan 1-week quota has been exhausted，等 7 天窗口重置或买用量包）。429 响应没有 retryAfterSeconds 说明只是瞬时预算空，退避一秒即可；固定间隔重试反而会延长限流。  
 ④ tool calling 不支持：模型「能连上、能聊天、但从不编辑文件」，因为它不实现 OpenAI 工具调用规范。换支持工具调用的模型（DeepSeek V4、Qwen3.5 coder 系、MiniMax M3 均支持）。
 
 【Appshots 与锁定态计算机使用】这是 Codex 桌面端（macOS）的 GUI 能力，与 CLI 排查无关但易踩坑：Appshots 用「双 Command 键」抓取任意应用窗口的截图+文字进对话；锁定态计算机使用（Locked Computer Use）让 Codex 在 Mac 锁屏后仍能操作预授权应用。两者都需要在系统设置里授予「屏幕录制 + 辅助功能」权限，锁定态还需安装 Apple 授权插件。
 
 ### 可直接复制的模板命令配置
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【1｜探活：区分网络问题还是协议问题】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1｜探活：区分网络问题还是协议问题】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 网络+key 是否通
-curl -s https://api.deepseek.com/models -H "Authorization: Bearer $DEEPSEEK_API_KEY"
+
+curl -s <https://api.deepseek.com/models> -H "Authorization: Bearer $DEEPSEEK_API_KEY"
+
 # 协议是否支持 Responses（返回 200 JSON=支持；404=只支持 chat）
-curl -s -X POST https://api.deepseek.com/v1/responses \
-  -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"deepseek-v4-flash","input":"hi","max_output_tokens":5}'
+
+curl -s -X POST <https://api.deepseek.com/v1/responses>   
+-H "Authorization: Bearer $DEEPSEEK_API_KEY"   
+-H "Content-Type: application/json"   
+-d '{"model":"deepseek-v4-flash","input":"hi","max_output_tokens":5}'
+
 # 对照：chat 端点能通但 responses 404 = 协议不匹配
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2｜排查 401：key 有没有被读到】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【2｜排查 401：key 有没有被读到】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
 echo $DEEPSEEK_API_KEY          # 空行=变量没导出，就是问题
+
 # 确认导出写进了 ~/.zshrc 而不是 ~/.bashrc，且变量名与 env_key 完全一致
-source ~/.zshrc
+
+source ~/.zshrc  
 codex logout                     # 清掉残留 ChatGPT 会话，避免误走登录态
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【3｜排查 404：base_url 与模型名】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【3｜排查 404：base_url 与模型名】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 正确（带 /v1）；错误：漏 /v1 或重复 /v1
-# base_url = "https://api.deepseek.com/v1"
-curl -s https://api.deepseek.com/v1/models -H "Authorization: Bearer $DEEPSEEK_API_KEY" | grep -o '"id":"[^"]*"'   # 核对真实模型名
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【4｜流中断/大模型慢：调超时与重试】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[model_providers.ollama]
-name = "Ollama"
-base_url = "http://localhost:11434/v1"
-stream_idle_timeout_ms = 600000   # 默认 300000(5分钟)，大模型首 token 前超时就调大
-request_max_retries = 2
+# 正确（带 /v1）；错误：漏 /v1 或重复 /v1
+
+# base_url = "<https://api.deepseek.com/v1>"
+
+curl -s <https://api.deepseek.com/v1/models> -H "Authorization: Bearer $DEEPSEEK_API_KEY" | grep -o '"id":"[^"]*"'   # 核对真实模型名
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【4｜流中断/大模型慢：调超时与重试】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+[model_providers.ollama]  
+name = "Ollama"  
+base_url = "<http://localhost:11434/v1>"  
+stream_idle_timeout_ms = 600000   # 默认 300000(5分钟)，大模型首 token 前超时就调大  
+request_max_retries = 2  
 stream_max_retries = 5
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【5｜确认 Codex 实际用哪个模型/端点】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-/status                        # 会话内看解析后的 model 与 base_url（权威）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【5｜确认 Codex 实际用哪个模型/端点】  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+/status                        # 会话内看解析后的 model 与 base_url（权威）  
 tail -f ~/.codex/log/*.log     # 看发出的 /v1/responses 调用
+
 # 不可靠：问模型「你是什么模型」——它看不到你的配置，只会说通用家族名
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【6｜额度耗尽（429）退避】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【6｜额度耗尽（429）退避】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 读 Retry-After 头做指数退避，别固定间隔重试
+
 # 有 retryAfterSeconds=按提示等；没有=瞬时预算空，退避 1 秒即可
+
 # 重置时间多为 UTC，换算北京时间需 +8 小时
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+【7｜Appshots 与锁定态授权（macOS）】  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【7｜Appshots 与锁定态授权（macOS）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # 系统设置→隐私与安全性：为 Codex 客户端勾选「屏幕录制」+「辅助功能」
+
 # 锁定态：设置→Computer Use→按引导安装 Apple 授权插件；逐个 App 授权，
+
 # 敏感 App 别点「Always allow」；检测到本地键鼠输入会自动暂停并重新锁屏
 
 ### 关键参数
 
-| 参数 | 官方默认值 | 一人公司推荐值 | 说明 |
-|---|---|---|---|
-| stream_idle_timeout_ms | 300000（5 分钟） | 本地大模型 600000；云端 300000 | 首 token 前超时→stream disconnected，调大解决 |
-| request_max_retries | 4 | 2-4 | 瞬时 5xx 重试次数 |
-| stream_max_retries | 5 | 5-10 | SSE 重连次数，网络差可调大 |
-| env_key | 无 | 写「变量名」而非 key 本身 | ★写错成 key 会让 Codex 找错变量、掉到登录页 |
-| base_url | api.openai.com/v1 | 带 /v1，不带多余尾斜杠 | ★漏/重复 /v1 直接 404 |
-| experimental_bearer_token | 无 | 与 env_key 二选一，别同时定义 | 两者（及 [auth] 表）互斥 |
-| model | 内置默认 | 与网关/厂商真实模型名精确一致 | model not found 多因拼写或缺前缀（如 openrouter 需 vendor/model） |
-| 429 退避 | Retry-After/指数退避 | 读 Retry-After，别固定间隔 | 固定间隔重试会延长限流 |
+| 参数                        | 官方默认值             | 一人公司推荐值                | 说明                                                    |
+| ------------------------- | ----------------- | ---------------------- | ----------------------------------------------------- |
+| stream_idle_timeout_ms    | 300000（5 分钟）      | 本地大模型 600000；云端 300000 | 首 token 前超时→stream disconnected，调大解决                  |
+| request_max_retries       | 4                 | 2-4                    | 瞬时 5xx 重试次数                                           |
+| stream_max_retries        | 5                 | 5-10                   | SSE 重连次数，网络差可调大                                       |
+| env_key                   | 无                 | 写「变量名」而非 key 本身        | ★写错成 key 会让 Codex 找错变量、掉到登录页                          |
+| base_url                  | api.openai.com/v1 | 带 /v1，不带多余尾斜杠          | ★漏/重复 /v1 直接 404                                      |
+| experimental_bearer_token | 无                 | 与 env_key 二选一，别同时定义    | 两者（及 [auth] 表）互斥                                      |
+| model                     | 内置默认              | 与网关/厂商真实模型名精确一致        | model not found 多因拼写或缺前缀（如 openrouter 需 vendor/model） |
+| 429 退避                    | Retry-After/指数退避  | 读 Retry-After，别固定间隔    | 固定间隔重试会延长限流                                           |
 
 必须改的一项：env_key 填的是环境变量「名字」，不是 key 的「值」——这是第三方接入 401 的头号原因。
 
@@ -2973,7 +3225,7 @@ tail -f ~/.codex/log/*.log     # 看发出的 /v1/responses 调用
 1. 【env_key 写成 key 本身】env_key = "DEEPSEEK_API_KEY" 是对的，写成 "sk-xxx" 会让 Codex 去找一个叫 sk-xxx 的变量、找不到就掉到登录页或 401。
 2. 【同时定义 env_key 和 experimental_bearer_token / [auth]】官方明确互斥，只能选一个，混用行为未定义。
 3. 【TOML 用成 JSON / 智能引号】config.toml 是 TOML 不是 JSON；弯引号（smart quotes）会破坏解析，报「key with no value, expected =」。
-4. 【base_url 漏 /v1 或重复 /v1】网关/OpenAI 兼容端点路由前缀是 /v1，漏写 404；DeepSeek 官方脚本写 https://api.deepseek.com/ 带尾斜杠，规范是 /v1，两者能通但别混。
+4. 【base_url 漏 /v1 或重复 /v1】网关/OpenAI 兼容端点路由前缀是 /v1，漏写 404；DeepSeek 官方脚本写 <https://api.deepseek.com/> 带尾斜杠，规范是 /v1，两者能通但别混。
 5. 【把「协议不匹配」当「网络不通」】curl /v1/chat/completions 通、Codex 却 404/空流，是端点只支持 Chat Completions，不是网络问题，换更贵模型没用。
 6. 【model not found ≠ 模型坏了】OpenRouter 要带前缀（openai/gpt-5.3-codex）、Ollama 用本地 tag、OpenAI 用裸 ID，同一个 ID 换个 provider 就 404。
 7. 【能聊天但从不改文件】模型不支持工具调用，只会用散文回答。选实现 OpenAI 工具规范的模型（DeepSeek V4 / Qwen3.5 coder / MiniMax M3）。
@@ -3008,12 +3260,12 @@ P1。它不是「不做就断」的地基（P0 是国内适配+config），而�
 
 ### 信息来源
 
-1. 官方第三方 provider 排障（401/404/model not found/断流/tool calling）：https://www.morphllm.com/codex-provider-configuration
-2. 报错症状→原因→处理与万能排查顺序：https://www.ai-indeed.com/encyclopedia/30160.html
-3. 401/404/断流分型排查与 /status 权威确认：https://uit.stanford.edu/service/ai-api-gateway/userguide/openai-codex-cli-setup
-4. 阿里云百炼 Codex 排障（stream disconnected/429 两种情形的官方口径）：https://www.alibabacloud.com/help/zh/model-studio/codex-token-plan
-5. Appshots 与锁定态计算机使用（权限、Apple 授权插件、限制）：https://www.creativeainews.com/blog/openai-codex-computer-use-mac-locked-2026
-6. 2026-05-21 Codex 更新（AppShots/Goal Mode/locked computer use）：https://www.aipedia.wiki/news/2026-05-21-openai-codex-appshots-goal-mode-locked-computer-use
+1. 官方第三方 provider 排障（401/404/model not found/断流/tool calling）：<https://www.morphllm.com/codex-provider-configuration>
+2. 报错症状→原因→处理与万能排查顺序：<https://www.ai-indeed.com/encyclopedia/30160.html>
+3. 401/404/断流分型排查与 /status 权威确认：<https://uit.stanford.edu/service/ai-api-gateway/userguide/openai-codex-cli-setup>
+4. 阿里云百炼 Codex 排障（stream disconnected/429 两种情形的官方口径）：<https://www.alibabacloud.com/help/zh/model-studio/codex-token-plan>
+5. Appshots 与锁定态计算机使用（权限、Apple 授权插件、限制）：<https://www.creativeainews.com/blog/openai-codex-computer-use-mac-locked-2026>
+6. 2026-05-21 Codex 更新（AppShots/Goal Mode/locked computer use）：<https://www.aipedia.wiki/news/2026-05-21-openai-codex-appshots-goal-mode-locked-computer-use>
 
 ### 待核实
 
