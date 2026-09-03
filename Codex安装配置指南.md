@@ -1,7 +1,8 @@
 # Codex 安装配置指南（macOS + DeepSeek）
 
-> 实操记录：2026-09-02 ｜ 机器：MacBook Apple M4 / macOS 26.6.2 / 24GB
-> 结果：Codex CLI v0.152.1 成功接入 DeepSeek，已通过真实请求验证
+> 实操记录：2026-09-02（2026-09-03 补充第 6 章 Stop 测试门禁）
+> 机器：MacBook Apple M4 / macOS 26.6.2 / 24GB
+> 结果：Codex CLI v0.152.1 成功接入 DeepSeek，已通过真实请求验证；Stop 测试门禁已触发并生效
 
 本文记录一次从零到跑通的完整过程，包含踩过的坑。目标：**不搭桥、不翻墙、不出境**，用 DeepSeek 驱动 Codex。
 
@@ -214,7 +215,147 @@ DeepSeek 侧对 Responses API 的支持也有取舍（摘自官方文档）：
 
 ---
 
-## 6. 常见故障
+## 6. Stop 测试门禁（Hooks）：四个连环坑
+
+目标：让 Codex **测试没过就不许交回**。配置本身只有几行，但 v0.152.1 上埋了四个坑，逐个踩过一遍。
+
+### 坑 1：字段名已废弃
+
+`[features].codex_hooks` 在 v0.152.1 已废弃，实跑会打印：
+
+```
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+```
+
+不改的话门禁就是个摆设（旧名仍能解析，但会走废弃路径）。正确写法：
+
+```toml
+[features]
+hooks = true
+```
+
+用 `codex features list | grep hooks` 确认，应显示 `hooks  stable  true`。
+
+### 坑 2：`codex exec` 根本不派发 hooks（最容易误判）
+
+**`codex exec` 无头模式不触发 Stop / SessionStart / PostToolUse / PreToolUse**（Codex 已知问题 openai/codex#26452，多个第三方复现一致）。
+
+后果很坑：**拿 `codex exec` 验证门禁，永远显示「没生效」** —— 这是测试方法错误，不是配置错。只有**交互式 TUI** 才运行 hooks。
+
+### 坑 3：hooks.json 与 config.toml 不要并存
+
+两者同时存在会告警，且行为不可预测：
+
+```
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml
+```
+
+统一用 config.toml（新版写法），把旧的备份掉：
+
+```bash
+mv ~/.codex/hooks.json ~/.codex/hooks.json.bak
+```
+
+### 坑 4：Stop hook 的 stdout 必须为空或合法 JSON
+
+往 stdout 打印普通文本（哪怕只是一行中文提示）会直接报错：
+
+```
+Stop hook (failed)
+error: hook returned invalid stop hook JSON output
+```
+
+因为 Codex 会把 Stop hook 的 stdout 当 JSON 解析（用来接收 `decision` / `continue` 指令）。正确姿势：
+
+| 场景 | 做法 |
+|---|---|
+| 进度 / 结果信息 | 写日志文件，**绝不要**打到 stdout |
+| 测试通过 | **stdout 完全静默 + exit 0**（Codex 视为正常结束） |
+| 测试失败 | 原因写 **stderr** + `exit 2`（注入反馈，逼它继续修） |
+
+自检 stdout 是否干净：
+
+```bash
+OUT=$(bash ~/.codex/hooks/stop_test_gate.sh 2>/dev/null); echo "长度=${#OUT}"   # 必须是 0
+```
+
+### 完整配置
+
+`~/.codex/config.toml` 追加：
+
+```toml
+[features]
+hooks = true
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/Users/apple/.codex/hooks/stop_test_gate.sh"
+timeout = 300
+statusMessage = "运行测试门禁"
+```
+
+`~/.codex/hooks/stop_test_gate.sh`：
+
+```bash
+#!/bin/bash
+# 有测试必须跑通（exit 2 逼 agent 继续修）；无测试套件则静默放行。
+# 注意：stdout 必须保持干净，信息只写日志或 stderr。
+
+LOG=/tmp/codex_stop_hook.log
+echo "$(date '+%Y-%m-%d %H:%M:%S') Stop hook fired · cwd=$PWD" >> "$LOG"
+
+if [ -f package.json ] && grep -q '"test"' package.json 2>/dev/null; then
+  OUT=$(npm test --silent 2>&1); RC=$?
+  if [ $RC -eq 0 ]; then echo "  ✅ npm test 通过" >> "$LOG"; exit 0; fi
+  echo "  ❌ npm test 失败" >> "$LOG"
+  { echo "测试未通过，请修复后再交回："; echo "$OUT" | tail -30; } >&2
+  exit 2
+fi
+
+if [ -f pytest.ini ] || [ -f pyproject.toml ] || [ -f setup.py ] || [ -d tests ]; then
+  if command -v pytest >/dev/null 2>&1; then
+    OUT=$(pytest -q 2>&1); RC=$?
+    if [ $RC -eq 0 ]; then echo "  ✅ pytest 通过" >> "$LOG"; exit 0; fi
+    echo "  ❌ pytest 失败" >> "$LOG"
+    { echo "测试未通过，请修复后再交回："; echo "$OUT" | tail -30; } >&2
+    exit 2
+  fi
+fi
+
+echo "  ℹ️ 无测试套件，放行" >> "$LOG"
+exit 0
+```
+
+```bash
+chmod +x ~/.codex/hooks/stop_test_gate.sh
+```
+
+### 首次使用必须手动信任
+
+新版 Codex 有 hook 信任机制，**未信任的 hook 静默不执行**，且这一步无法用非交互方式代劳：
+
+```bash
+cd 你的项目目录 && codex   # 进入交互式 TUI
+/hooks                     # 在输入框执行
+# 选中 Stop → stop_test_gate.sh → Trust
+```
+
+改动 hook 定义后可能需要重新信任。
+
+### 验证
+
+在 TUI 里发一条消息并**等它回复完**（Stop 只在「一轮对话结束」那一刻触发），然后：
+
+```bash
+cat /tmp/codex_stop_hook.log
+# 期望看到：Stop hook fired · cwd=... 以及结论行
+# 且 TUI 里不应出现 "Stop hook (failed)"
+```
+
+---
+
+## 7. 常见故障
 
 | 症状 | 原因 | 处理 |
 |---|---|---|
@@ -224,10 +365,14 @@ DeepSeek 侧对 Responses API 的支持也有取舍（摘自官方文档）：
 | 明显「智商不够」 | 用了 flash 档 | 换 `deepseek-v4-pro` |
 | codex 命令找不到 | PATH 没生效 | `source ~/.zshrc` 或重开终端 |
 | 想生成 PPT / 操作浏览器 | Codex 本身没有这些能力 | 换工具，别为难它 |
+| Stop hook 报 `invalid stop hook JSON output` | 脚本往 stdout 打了普通文本 | 信息改写日志 / stderr，stdout 保持空 |
+| 门禁配了却从不触发 | 用 `codex exec` 验证，或未在 TUI 信任 | 改用交互式 TUI，并在 `/hooks` 里信任 |
+| `deprecated: codex_hooks` 警告 | 字段名废弃 | 改为 `[features] hooks = true` |
+| hooks 行为诡异 | hooks.json 与 config.toml 并存冲突 | 备份 hooks.json，统一用 config.toml |
 
 ---
 
-## 7. 一键复现脚本
+## 8. 一键复现脚本
 
 ```bash
 #!/usr/bin/env bash
@@ -261,6 +406,52 @@ wire_api = "responses"
 env_key = "DEEPSEEK_API_KEY"
 EOF
 
+# ── Stop 测试门禁 ──
+mkdir -p ~/.codex/hooks
+cat > ~/.codex/hooks/stop_test_gate.sh <<'GATE'
+#!/bin/bash
+# 有测试必须跑通（exit 2 逼 agent 继续修）；无测试套件则静默放行。
+# 注意：stdout 必须保持干净，信息只写日志或 stderr。
+LOG=/tmp/codex_stop_hook.log
+echo "$(date '+%Y-%m-%d %H:%M:%S') Stop hook fired · cwd=$PWD" >> "$LOG"
+
+if [ -f package.json ] && grep -q '"test"' package.json 2>/dev/null; then
+  OUT=$(npm test --silent 2>&1); RC=$?
+  if [ $RC -eq 0 ]; then echo "  ✅ npm test 通过" >> "$LOG"; exit 0; fi
+  echo "  ❌ npm test 失败" >> "$LOG"
+  { echo "测试未通过，请修复后再交回："; echo "$OUT" | tail -30; } >&2
+  exit 2
+fi
+
+if [ -f pytest.ini ] || [ -f pyproject.toml ] || [ -f setup.py ] || [ -d tests ]; then
+  if command -v pytest >/dev/null 2>&1; then
+    OUT=$(pytest -q 2>&1); RC=$?
+    if [ $RC -eq 0 ]; then echo "  ✅ pytest 通过" >> "$LOG"; exit 0; fi
+    echo "  ❌ pytest 失败" >> "$LOG"
+    { echo "测试未通过，请修复后再交回："; echo "$OUT" | tail -30; } >&2
+    exit 2
+  fi
+fi
+
+echo "  ℹ️ 无测试套件，放行" >> "$LOG"
+exit 0
+GATE
+chmod +x ~/.codex/hooks/stop_test_gate.sh
+
+# 追加 hooks 配置（此处需展开 $HOME，故不加引号）
+cat >> ~/.codex/config.toml <<CFG
+
+[features]
+hooks = true
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = "$HOME/.codex/hooks/stop_test_gate.sh"
+timeout = 300
+statusMessage = "运行测试门禁"
+CFG
+
 grep -q 'HOME/bin' ~/.zshrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
-echo "完成。请设置 DEEPSEEK_API_KEY 后重开终端。"
+echo "完成。请设置 DEEPSEEK_API_KEY，重开终端后执行 codex，在 TUI 内运行 /hooks 信任测试门禁。"
 ```
