@@ -236,11 +236,19 @@ hooks = true
 
 用 `codex features list | grep hooks` 确认，应显示 `hooks  stable  true`。
 
-### 坑 2：`codex exec` 根本不派发 hooks（最容易误判）
+### 坑 2：门禁「配了却不触发」—— 多半是没信任（最容易误判）
 
-**`codex exec` 无头模式不触发 Stop / SessionStart / PostToolUse / PreToolUse**（Codex 已知问题 openai/codex#26452，多个第三方复现一致）。
+排查顺序（按命中率排序）：
 
-后果很坑：**拿 `codex exec` 验证门禁，永远显示「没生效」** —— 这是测试方法错误，不是配置错。只有**交互式 TUI** 才运行 hooks。
+1. **未在 TUI 里信任**（最常见）→ 见下文「附加坑」。未信任的 hook 在**任何模式**（含 `exec`）都静默不执行。
+2. **双源冲突**：hooks.json 与 config.toml 并存 → 备份 hooks.json，统一 config.toml。
+3. **字段名废弃**：还在用 `codex_hooks` → 改 `hooks = true`。
+
+> ⚠️ **更正一个流传较广的错误结论**：本文初版曾写「`codex exec` 不派发 hooks」（依据 openai/codex#26452）。
+> **2026-09-04 实测复核：v0.152.1 的 exec 模式下 Stop hook 正常触发** —— 输出打印 `hook: Stop` / `hook: Stop Completed`，门禁日志 `/tmp/codex_stop_hook.log` 也有对应记录。
+> 早前「测不出来」的真正原因是**信任未授予**叠加**双源冲突**，不是运行模式限制。
+>
+> → **exec 模式是支持 hooks 的**。门禁不触发时先查信任状态。
 
 ### 坑 3：hooks.json 与 config.toml 不要并存
 
@@ -366,7 +374,7 @@ cat /tmp/codex_stop_hook.log
 | codex 命令找不到 | PATH 没生效 | `source ~/.zshrc` 或重开终端 |
 | 想生成 PPT / 操作浏览器 | Codex 本身没有这些能力 | 换工具，别为难它 |
 | Stop hook 报 `invalid stop hook JSON output` | 脚本往 stdout 打了普通文本 | 信息改写日志 / stderr，stdout 保持空 |
-| 门禁配了却从不触发 | 用 `codex exec` 验证，或未在 TUI 信任 | 改用交互式 TUI，并在 `/hooks` 里信任 |
+| 门禁配了却从不触发 | 未在 TUI 信任（最常见）、双源冲突、字段名废弃 | 先 `/hooks` 信任，再看是否双源冲突 / 字段名错误（exec 模式本身支持 hooks） |
 | `deprecated: codex_hooks` 警告 | 字段名废弃 | 改为 `[features] hooks = true` |
 | hooks 行为诡异 | hooks.json 与 config.toml 并存冲突 | 备份 hooks.json，统一用 config.toml |
 
